@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import { ShoppingCart, Crown, TrendingUp } from 'lucide-react'
 import { bestSellers } from '@/data/mockData'
 import { useCart } from '@/contexts/CartContext'
@@ -75,17 +76,22 @@ const BestSellersSection: React.FC = () => {
               </div>
 
               {/* Product Image */}
-              <div className="aspect-[4/5] relative overflow-hidden group-hover:scale-105 transition-transform duration-500">
-                <img
-                  src={index % 2 === 0 ? "/images/Fragrance-Trends-2023-Website-Featured-Image.jpg" : "/images/e856171e-a9b3-48fe-842c-cdbab18f1750.jpg"}
+              <div className="aspect-[4/5] relative overflow-hidden group-hover:scale-105 transition-transform duration-500 bg-gradient-to-br from-purple-50 to-pink-50">
+                <Image
+                  src={product.image}
                   alt={product.name}
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                  onError={() => {
+                    console.log('Best sellers image failed to load:', product.image)
+                  }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent z-10" />
 
                 {/* Hover Overlay */}
                 <motion.div
-                  className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-6"
+                  className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-6 z-20"
                 >
                   <button
                     onClick={() => handleAddToCart(product)}

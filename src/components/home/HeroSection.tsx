@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import { Sparkles, MessageCircle, ArrowDown } from 'lucide-react'
 
 interface HeroSectionProps {
@@ -13,13 +14,18 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onChatStart }) => {
     <div className="relative h-screen flex items-center justify-center overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0">
-        <img 
+        <Image
           src="/images/pngtree-perfume-morning-silk-perfume-pearl-indoor-background-photography-picture-image_840595.jpg"
           alt="Perfume Background"
-          className="w-full h-full object-cover"
+          fill
+          className="object-cover"
+          priority
+          onError={() => {
+            console.log('Hero background image failed to load')
+          }}
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-50/90 via-pink-50/90 to-rose-50/90" />
-        <div className="absolute inset-0 bg-white/30" />
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-50/90 via-pink-50/90 to-rose-50/90 z-10" />
+        <div className="absolute inset-0 bg-white/30 z-10" />
       </div>
       
       {/* Floating Elements */}
@@ -46,7 +52,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onChatStart }) => {
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 max-w-6xl mx-auto px-4 text-center">
+      <div className="relative z-20 max-w-6xl mx-auto px-4 text-center">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
