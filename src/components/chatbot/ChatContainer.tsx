@@ -78,7 +78,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ isOpen, onClose }) => {
                 margin: 0,
                 fontFamily: 'var(--font-elegant)',
                 letterSpacing: '-0.02em'
-              }}>퍼퓸퀸 어시스턴트</h3>
+              }}>C4pang AI</h3>
               <p style={{ 
                 fontSize: '13px', 
                 color: 'rgba(255, 255, 255, 0.8)', 

@@ -75,13 +75,13 @@ const BestSellersSection: React.FC = () => {
               </div>
 
               {/* Product Image */}
-              <div className="aspect-[4/5] bg-gradient-to-br from-purple-50 to-pink-50 relative overflow-hidden group-hover:scale-105 transition-transform duration-500">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-40 h-40 bg-gradient-to-br from-purple-200 to-pink-200 rounded-full opacity-30" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-5xl">💎</span>
-                  </div>
-                </div>
+              <div className="aspect-[4/5] relative overflow-hidden group-hover:scale-105 transition-transform duration-500">
+                <img
+                  src={index % 2 === 0 ? "/images/Fragrance-Trends-2023-Website-Featured-Image.jpg" : "/images/e856171e-a9b3-48fe-842c-cdbab18f1750.jpg"}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
 
                 {/* Hover Overlay */}
                 <motion.div

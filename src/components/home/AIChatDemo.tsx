@@ -66,8 +66,17 @@ const AIChatDemo: React.FC = () => {
   }, [isPlaying, currentMessageIndex])
 
   return (
-    <div id="ai-demo" className="py-20 bg-gradient-to-br from-indigo-50 to-purple-50">
-      <div className="max-w-6xl mx-auto px-4">
+    <div id="ai-demo" className="py-20 relative overflow-hidden">
+      {/* Background Image */}
+      <div className="absolute inset-0">
+        <img 
+          src="/images/2021123101001036600063001.jpg"
+          alt="AI Background"
+          className="w-full h-full object-cover opacity-10"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/95 to-purple-50/95" />
+      </div>
+      <div className="max-w-6xl mx-auto px-4 relative z-10">
         <div className="text-center mb-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -75,10 +84,10 @@ const AIChatDemo: React.FC = () => {
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-4xl font-bold text-gray-800 mb-4">
+            <h2 className="display-font text-4xl font-bold text-gray-800 mb-4">
               AI가 찾아주는 나만의 향수
             </h2>
-            <p className="text-lg text-gray-600">
+            <p className="text-lg text-gray-600 font-medium">
               간단한 대화만으로도 당신의 취향을 완벽하게 파악해요
             </p>
           </motion.div>

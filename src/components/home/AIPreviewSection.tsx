@@ -69,13 +69,13 @@ const AIPreviewSection: React.FC<AIPreviewSectionProps> = ({ onChatStart }) => {
               </div>
 
               {/* Product Image */}
-              <div className="aspect-square bg-gradient-to-br from-pink-100 to-purple-100 relative overflow-hidden">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-32 h-32 bg-gradient-to-br from-pink-300 to-purple-300 rounded-full opacity-20" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-4xl">🌸</span>
-                  </div>
-                </div>
+              <div className="aspect-square relative overflow-hidden">
+                <img
+                  src="/images/p1065591406141189_714_thum.jpg"
+                  alt={recommendation.product.name}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
                 
                 {/* Hover Overlay */}
                 <motion.div

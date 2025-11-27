@@ -11,8 +11,16 @@ interface HeroSectionProps {
 const HeroSection: React.FC<HeroSectionProps> = ({ onChatStart }) => {
   return (
     <div className="relative h-screen flex items-center justify-center overflow-hidden">
-      {/* Background Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-50 via-pink-50 to-rose-50" />
+      {/* Background Image */}
+      <div className="absolute inset-0">
+        <img 
+          src="/images/pngtree-perfume-morning-silk-perfume-pearl-indoor-background-photography-picture-image_840595.jpg"
+          alt="Perfume Background"
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-50/90 via-pink-50/90 to-rose-50/90" />
+        <div className="absolute inset-0 bg-white/30" />
+      </div>
       
       {/* Floating Elements */}
       <div className="absolute inset-0">
@@ -60,11 +68,11 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onChatStart }) => {
             C4pang
           </h1>
           
-          <p className="text-xl md:text-2xl text-gray-700 mb-4 font-medium">
+          <p className="text-xl md:text-2xl text-gray-700 mb-4 font-semibold leading-tight">
             당신만을 위한 향수를 찾아드려요
           </p>
           
-          <p className="text-lg text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed font-medium">
             AI가 당신의 취향을 분석하여 완벽한 향수를 추천하고,
             <br className="hidden md:block" />
             바로 구매까지 연결해드리는 스마트한 쇼핑 경험

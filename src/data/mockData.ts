@@ -40,7 +40,7 @@ export const previewRecommendations = [
       price: 89000,
       description: '피오니와 재스민의 조화로운 플로럴 향',
       notes: ['피오니', '재스민', '화이트머스크'],
-      image: '/images/perfume-1.jpg',
+      image: '/images/p1065591406141189_714_thum.jpg',
       category: 'Floral'
     },
     matchType: 'preference' as const,
@@ -55,7 +55,7 @@ export const previewRecommendations = [
       price: 125000,
       description: '로맨틱하고 우아한 플로럴 부케',
       notes: ['로즈', '피치', '바닐라'],
-      image: '/images/perfume-2.jpg',
+      image: '/images/Fragrance-Trends-2023-Website-Featured-Image.jpg',
       category: 'Floral'
     },
     matchType: 'preference' as const,
@@ -70,7 +70,7 @@ export const previewRecommendations = [
       price: 142000,
       description: '모던하고 세련된 오리엔탈 플로럴',
       notes: ['베르가못', '재스민', '바닐라'],
-      image: '/images/perfume-3.jpg',
+      image: '/images/e856171e-a9b3-48fe-842c-cdbab18f1750.jpg',
       category: 'Oriental Floral'
     },
     matchType: 'preference' as const,
@@ -87,7 +87,7 @@ export const bestSellers = [
     price: 135000,
     description: '매혹적이고 중독성 있는 오리엔탈 향',
     notes: ['커피', '바닐라', '화이트플라워'],
-    image: '/images/perfume-4.jpg',
+    image: '/images/p1065591406141189_714_thum.jpg',
     category: 'Oriental',
     rank: 1,
     salesCount: 1250
@@ -99,7 +99,7 @@ export const bestSellers = [
     price: 118000,
     description: '달콤하고 관능적인 플로럴 오리엔탈',
     notes: ['튜베로즈', '재스민', '코코아'],
-    image: '/images/perfume-5.jpg',
+    image: '/images/Fragrance-Trends-2023-Website-Featured-Image.jpg',
     category: 'Floral Oriental',
     rank: 2,
     salesCount: 980
@@ -111,7 +111,7 @@ export const bestSellers = [
     price: 132000,
     description: '자유롭고 대담한 플로럴 아로마틱',
     notes: ['라벤더', '오렌지블라섬', '바닐라'],
-    image: '/images/perfume-6.jpg',
+    image: '/images/e856171e-a9b3-48fe-842c-cdbab18f1750.jpg',
     category: 'Floral Aromatic',
     rank: 3,
     salesCount: 876
@@ -123,7 +123,7 @@ export const bestSellers = [
     price: 128000,
     description: '화려하고 폭발적인 플로럴 부케',
     notes: ['프리지아', '로즈', '패출리'],
-    image: '/images/perfume-7.jpg',
+    image: '/images/2021123101001036600063001.jpg',
     category: 'Floral',
     rank: 4,
     salesCount: 743
