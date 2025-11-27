@@ -113,6 +113,30 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ isOpen, onClose }) => {
           <MessageList messages={state.messages} isTyping={state.isTyping} />
         </div>
 
+        {/* Loading Indicator */}
+        {state.isLoading && (
+          <div style={{
+            padding: '8px 16px',
+            borderTop: '1px solid #e5e7eb',
+            backgroundColor: '#f9fafb',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <div style={{
+              width: '16px',
+              height: '16px',
+              border: '2px solid #ec4899',
+              borderTop: '2px solid transparent',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite'
+            }} />
+            <span style={{ fontSize: '12px', color: '#6b7280' }}>
+              AI가 응답을 생성하고 있어요...
+            </span>
+          </div>
+        )}
+
         {/* Input */}
         <div className="border-t border-gray-200 p-3">
           <MessageInput 
@@ -125,20 +149,53 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ isOpen, onClose }) => {
         <div className="border-t border-gray-100 p-2 bg-gray-50">
           <div className="flex flex-wrap gap-1">
             <button
-              onClick={() => sendMessage('향수 추천해주세요')}
-              className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full hover:bg-primary-200 transition-colors"
+              onClick={() => !state.isLoading && !state.isTyping && sendMessage('향수 추천해주세요')}
+              disabled={state.isLoading || state.isTyping}
+              style={{
+                fontSize: '12px',
+                backgroundColor: state.isLoading || state.isTyping ? '#f3f4f6' : '#fce7f3',
+                color: state.isLoading || state.isTyping ? '#9ca3af' : '#be185d',
+                padding: '4px 8px',
+                borderRadius: '9999px',
+                border: 'none',
+                cursor: state.isLoading || state.isTyping ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: state.isLoading || state.isTyping ? 0.5 : 1
+              }}
             >
               향수 추천
             </button>
             <button
-              onClick={() => sendMessage('인기 브랜드가 뭐예요?')}
-              className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full hover:bg-primary-200 transition-colors"
+              onClick={() => !state.isLoading && !state.isTyping && sendMessage('인기 브랜드가 뭐예요?')}
+              disabled={state.isLoading || state.isTyping}
+              style={{
+                fontSize: '12px',
+                backgroundColor: state.isLoading || state.isTyping ? '#f3f4f6' : '#fce7f3',
+                color: state.isLoading || state.isTyping ? '#9ca3af' : '#be185d',
+                padding: '4px 8px',
+                borderRadius: '9999px',
+                border: 'none',
+                cursor: state.isLoading || state.isTyping ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: state.isLoading || state.isTyping ? 0.5 : 1
+              }}
             >
               인기 브랜드
             </button>
             <button
-              onClick={() => sendMessage('가격대별로 알려주세요')}
-              className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full hover:bg-primary-200 transition-colors"
+              onClick={() => !state.isLoading && !state.isTyping && sendMessage('가격대별로 알려주세요')}
+              disabled={state.isLoading || state.isTyping}
+              style={{
+                fontSize: '12px',
+                backgroundColor: state.isLoading || state.isTyping ? '#f3f4f6' : '#fce7f3',
+                color: state.isLoading || state.isTyping ? '#9ca3af' : '#be185d',
+                padding: '4px 8px',
+                borderRadius: '9999px',
+                border: 'none',
+                cursor: state.isLoading || state.isTyping ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: state.isLoading || state.isTyping ? 0.5 : 1
+              }}
             >
               가격 정보
             </button>

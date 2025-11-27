@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useReducer, useCallback } from 'react'
 import { ChatbotState, ChatbotContextType, Message } from '@/types/chatbot'
+import { sendChatMessage } from '@/services/chatbotService'
 
 const initialState: ChatbotState = {
   messages: [
@@ -58,24 +59,45 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
     }
     dispatch({ type: 'ADD_MESSAGE', payload: userMessage })
 
-    // 타이핑 효과 시작
+    // 로딩 상태 설정
+    dispatch({ type: 'SET_LOADING', payload: true })
     dispatch({ type: 'SET_TYPING', payload: true })
 
-    // 봇 응답 시뮬레이션 (실제로는 API 호출)
-    setTimeout(() => {
-      const botResponse = generateBotResponse(content)
+    try {
+      // 실제 API 호출
+      const response = await sendChatMessage(content, {
+        previousMessages: state.messages.slice(-10), // 최근 10개 메시지만 컨텍스트로 전송
+      })
+
+      // API 응답을 메시지로 변환
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: botResponse,
+        content: response.message,
+        sender: 'bot',
+        timestamp: new Date(),
+        type: response.type || 'text'
+      }
+      
+      dispatch({ type: 'ADD_MESSAGE', payload: botMessage })
+      
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      
+      // 오류 시 폴백 메시지
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: '죄송합니다. 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요. 🙏',
         sender: 'bot',
         timestamp: new Date(),
         type: 'text'
       }
       
+      dispatch({ type: 'ADD_MESSAGE', payload: errorMessage })
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false })
       dispatch({ type: 'SET_TYPING', payload: false })
-      dispatch({ type: 'ADD_MESSAGE', payload: botMessage })
-    }, 1000 + Math.random() * 1000)
-  }, [])
+    }
+  }, [state.messages])
 
   const toggleChatbot = useCallback(() => {
     dispatch({ type: 'TOGGLE_CHATBOT' })
@@ -103,32 +125,3 @@ export const useChatbot = () => {
   return context
 }
 
-// 간단한 봇 응답 생성기 (실제로는 백엔드 API 호출)
-const generateBotResponse = (userInput: string): string => {
-  const input = userInput.toLowerCase()
-  
-  // 향수 추천 관련
-  if (input.includes('추천') || input.includes('향수')) {
-    return '어떤 향을 좋아하시나요? 🌹\n• 플로럴 (장미, 재스민)\n• 시트러스 (레몬, 오렌지)\n• 우디 (샌달우드, 시더)\n• 머스크 (부드럽고 따뜻한 향)\n\n원하시는 향을 말씀해주시면 맞춤 추천해드릴게요!'
-  }
-  
-  // 가격 관련
-  if (input.includes('가격') || input.includes('얼마')) {
-    return '퍼퓸퀸에서는 다양한 가격대의 향수를 준비했어요! 💝\n\n• 5만원 이하: 데일리 향수\n• 5-10만원: 프리미엄 향수\n• 10만원 이상: 럭셔리 향수\n\n어떤 가격대를 원하시나요?'
-  }
-  
-  // 브랜드 관련
-  if (input.includes('브랜드') || input.includes('메이커')) {
-    return '인기 브랜드를 소개해드릴게요! ✨\n\n• 샤넬 - 클래식하고 우아한 향\n• 딥티크 - 유니크하고 세련된 향\n• 조말론 - 영국의 전통적인 향\n• 르라보 - 모던하고 개성있는 향\n\n어떤 브랜드가 궁금하신가요?'
-  }
-  
-  // 기본 응답
-  const responses = [
-    '더 자세히 알려주시면 더 정확한 추천을 해드릴 수 있어요! 😊',
-    '향수에 대해 궁금한 점이 있으시면 언제든 물어보세요! 🌸',
-    '어떤 스타일의 향수를 찾고 계신지 알려주세요! ✨',
-    '취향에 맞는 완벽한 향수를 찾아드릴게요! 💕'
-  ]
-  
-  return responses[Math.floor(Math.random() * responses.length)]
-}
