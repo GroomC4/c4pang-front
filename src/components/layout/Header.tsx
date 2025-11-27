@@ -25,10 +25,10 @@ export function Header({
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-3">
               <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-violet-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">PQ</span>
+                <span className="text-white font-bold text-sm">C4</span>
               </div>
               <div>
-                <h2 className="text-purple-600 font-bold">퍼퓸퀸</h2>
+                <h2 className="text-purple-600 font-bold">C4pang</h2>
                 <p className="text-gray-500 text-xs">
                   Your Signature Scent
                 </p>

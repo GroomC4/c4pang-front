@@ -3,20 +3,36 @@
 import Link from 'next/link'
 import { Header } from '@/components/layout/Header'
 import Chatbot from '@/components/chatbot/Chatbot'
+import { Cart } from '@/components/cart/Cart'
+import { useCart } from '@/contexts/CartContext'
 import { User } from '@/types'
 
 export default function Home() {
   // 임시로 user를 null로 설정하여 로그인되지 않은 상태로 표시
   const user: User | null = null
+  const { 
+    items, 
+    totalPrice, 
+    totalItems, 
+    isCartOpen, 
+    openCart, 
+    closeCart, 
+    updateQuantity, 
+    removeItem 
+  } = useCart()
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-100">
-      <Header user={user} />
+      <Header 
+        user={user} 
+        cartItemCount={totalItems}
+        onCartClick={openCart}
+      />
 
       <div className="flex flex-col items-center justify-center px-4 py-20">
         <div className="max-w-4xl w-full text-center">
           <h1 className="text-5xl md:text-6xl font-bold text-purple-700 mb-6">
-            퍼퓸퀸
+            C4pang
           </h1>
           <p className="text-xl md:text-2xl text-gray-600 mb-8">
             20대 여성을 위한 향수 이커머스 플랫폼
@@ -84,6 +100,16 @@ export default function Home() {
 
       {/* 챗봇 */}
       <Chatbot />
+      
+      {/* 장바구니 */}
+      <Cart
+        isOpen={isCartOpen}
+        onClose={closeCart}
+        items={items}
+        onUpdateQuantity={updateQuantity}
+        onRemove={removeItem}
+        totalPrice={totalPrice}
+      />
     </main>
   )
 }

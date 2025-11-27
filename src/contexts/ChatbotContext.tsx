@@ -8,7 +8,7 @@ const initialState: ChatbotState = {
   messages: [
     {
       id: '1',
-      content: '안녕하세요! 퍼퓸퀸입니다. 🌸\n어떤 향수를 찾고 계신가요? 취향에 맞는 향수를 추천해드릴게요!',
+      content: '안녕하세요! C4pang입니다. 🌸\n어떤 향수를 찾고 계신가요? 취향에 맞는 향수를 추천해드릴게요!',
       sender: 'bot',
       timestamp: new Date(),
       type: 'text'
@@ -75,7 +75,13 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
         content: response.message,
         sender: 'bot',
         timestamp: new Date(),
-        type: response.type || 'text'
+        type: response.type || 'text',
+        data: {
+          recommendations: response.recommendations,
+          faqs: response.faqs,
+          products: response.products,
+          actions: response.actions
+        }
       }
       
       dispatch({ type: 'ADD_MESSAGE', payload: botMessage })

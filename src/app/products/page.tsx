@@ -5,7 +5,8 @@ import { Header } from '@/components/layout/Header';
 import { ProductList } from '@/components/product/ProductList';
 import { Cart } from '@/components/cart/Cart';
 import Chatbot from '@/components/chatbot/Chatbot';
-import { Product, CartItem } from '@/types';
+import { useCart } from '@/contexts/CartContext';
+import { Product } from '@/types';
 
 const mockProducts: Product[] = [
   {
@@ -71,49 +72,24 @@ const mockProducts: Product[] = [
 ];
 
 export default function ProductsPage() {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-
-  const addToCart = (product: Product) => {
-    setCartItems(prev => {
-      const existing = prev.find(item => item.id === product.id);
-      if (existing) {
-        return prev.map(item =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      }
-      return [...prev, { ...product, quantity: 1 }];
-    });
-  };
-
-  const removeFromCart = (productId: string) => {
-    setCartItems(prev => prev.filter(item => item.id !== productId));
-  };
-
-  const updateQuantity = (productId: string, quantity: number) => {
-    if (quantity === 0) {
-      removeFromCart(productId);
-      return;
-    }
-    setCartItems(prev =>
-      prev.map(item =>
-        item.id === productId ? { ...item, quantity } : item
-      )
-    );
-  };
-
-  const getTotalPrice = () => {
-    return cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
-  };
+  const { 
+    items, 
+    totalPrice, 
+    totalItems, 
+    isCartOpen, 
+    addItem,
+    updateQuantity, 
+    removeItem,
+    openCart,
+    closeCart
+  } = useCart();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-lavender-50 to-violet-50">
       <Header
-        cartItemCount={cartItems.reduce((sum, item) => sum + item.quantity, 0)}
-        onCartClick={() => setIsCartOpen(true)}
+        cartItemCount={totalItems}
+        onCartClick={openCart}
       />
 
       <main className="container mx-auto px-4 py-8 max-w-7xl">
@@ -129,17 +105,17 @@ export default function ProductsPage() {
         <ProductList
           products={mockProducts}
           onProductClick={setSelectedProduct}
-          onAddToCart={addToCart}
+          onAddToCart={addItem}
         />
       </main>
 
       <Cart
         isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        items={cartItems}
+        onClose={closeCart}
+        items={items}
         onUpdateQuantity={updateQuantity}
-        onRemove={removeFromCart}
-        totalPrice={getTotalPrice()}
+        onRemove={removeItem}
+        totalPrice={totalPrice}
       />
 
       <Chatbot />

@@ -3,7 +3,13 @@ export interface Message {
   content: string
   sender: 'user' | 'bot'
   timestamp: Date
-  type?: 'text' | 'product' | 'action'
+  type?: 'text' | 'product' | 'action' | 'recommendation' | 'faq'
+  data?: {
+    recommendations?: any[]
+    faqs?: any[]
+    products?: ProductRecommendation[]
+    actions?: string[]
+  }
 }
 
 export interface ProductRecommendation {

@@ -7,6 +7,8 @@ yarn-error.log*
 # Production builds
 /build
 /dist
+.next/
+out/
 
 # Environment variables
 .env
@@ -69,3 +71,11 @@ jspm_packages/
 
 # Yarn Integrity file
 .yarn-integrity
+
+# Vooster configuration files
+.vooster/
+vooster-docs/
+
+# Project specific ignores
+CLAUDE.md
+CHATBOT_API_GUIDE.md

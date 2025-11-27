@@ -2,13 +2,17 @@
 
 import React from 'react'
 import { Message } from '@/types/chatbot'
+import { RecommendationView } from './RecommendationView'
+import { FAQView } from './FAQView'
 
 interface MessageBubbleProps {
   message: Message
   isLastMessage?: boolean
+  onProductClick?: (productId: string) => void
+  onSearchFAQ?: (query: string) => void
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLastMessage }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLastMessage, onProductClick, onSearchFAQ }) => {
   const isUser = message.sender === 'user'
   const formatTime = (timestamp: Date) => {
     return new Intl.DateTimeFormat('ko-KR', {
@@ -69,6 +73,26 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLastMessage })
             }}>
             {message.content}
           </div>
+
+          {/* Recommendation View */}
+          {!isUser && message.type === 'recommendation' && message.data?.recommendations && (
+            <div style={{ marginTop: '12px' }}>
+              <RecommendationView 
+                recommendations={message.data.recommendations}
+                onProductClick={onProductClick}
+              />
+            </div>
+          )}
+
+          {/* FAQ View */}
+          {!isUser && message.type === 'faq' && message.data?.faqs && (
+            <div style={{ marginTop: '12px' }}>
+              <FAQView 
+                faqs={message.data.faqs}
+                onSearchFAQ={onSearchFAQ}
+              />
+            </div>
+          )}
           
           {/* Timestamp */}
           <div style={{

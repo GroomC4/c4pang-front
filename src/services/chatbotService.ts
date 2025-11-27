@@ -1,12 +1,16 @@
 import { api } from '@/utils/api'
 import { Message, ProductRecommendation } from '@/types/chatbot'
+import { getPersonalizedRecommendations, searchFAQs, getFAQs } from './recommendationService'
+import { UserPreferences } from '@/types/recommendation'
 
 // 채팅 응답 인터페이스
 export interface ChatResponse {
   success: boolean
   message: string
-  type: 'text' | 'product' | 'action'
+  type: 'text' | 'product' | 'action' | 'recommendation' | 'faq'
   products?: ProductRecommendation[]
+  recommendations?: any[]
+  faqs?: any[]
   actions?: string[]
   error?: string
 }
@@ -60,7 +64,7 @@ export class ChatbotService {
       console.error('Chatbot API Error:', error)
       
       // API 오류 시 폴백 응답
-      return this.getFallbackResponse(request.message)
+      return await this.getFallbackResponse(request.message)
     }
   }
 
@@ -72,6 +76,7 @@ export class ChatbotService {
     occasion?: string
   }): Promise<ChatResponse> {
     try {
+      // 기존 API 호출 시도
       const response = await api.post<ChatResponse>('/chatbot/recommendations', {
         preferences,
         sessionId: this.sessionId || this.generateSessionId()
@@ -81,11 +86,105 @@ export class ChatbotService {
     } catch (error) {
       console.error('Recommendation API Error:', error)
       
+      // 새로운 추천 서비스 사용
+      try {
+        const userPreferences: UserPreferences = {
+          fragranceTypes: preferences.fragranceType || [],
+          priceRange: preferences.priceRange || { min: 0, max: 300000 },
+          favoriteNotes: [],
+          preferredBrands: preferences.brand ? [preferences.brand] : [],
+          occasions: preferences.occasion ? [preferences.occasion] : [],
+          intensity: 'medium',
+          purchaseHistory: [],
+          viewHistory: [],
+          cartHistory: []
+        }
+
+        const recommendationResult = await getPersonalizedRecommendations({
+          userPreferences,
+          limit: 5
+        })
+
+        if (recommendationResult.success && recommendationResult.recommendations.length > 0) {
+          return {
+            success: true,
+            message: '취향에 맞는 향수를 찾았어요! 🌸',
+            type: 'recommendation',
+            recommendations: recommendationResult.recommendations
+          }
+        }
+      } catch (recommendationError) {
+        console.error('Personalized Recommendation Error:', recommendationError)
+      }
+      
       return {
         success: false,
         message: '죄송합니다. 추천 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.',
         type: 'text',
         error: 'API_ERROR'
+      }
+    }
+  }
+
+  // FAQ 검색 요청
+  public async searchFAQ(query: string): Promise<ChatResponse> {
+    try {
+      const faqResult = await searchFAQs(query)
+      
+      if (faqResult.success && faqResult.faqs.length > 0) {
+        return {
+          success: true,
+          message: `"${query}"에 대한 답변을 찾았어요! 📋`,
+          type: 'faq',
+          faqs: faqResult.faqs
+        }
+      } else {
+        return {
+          success: true,
+          message: '죄송해요, 관련 정보를 찾을 수 없네요. 다른 질문을 해보시거나 고객센터로 문의해주세요. 😊',
+          type: 'text'
+        }
+      }
+    } catch (error) {
+      console.error('FAQ Search Error:', error)
+      
+      return {
+        success: false,
+        message: 'FAQ 검색 중 오류가 발생했습니다. 다시 시도해주세요.',
+        type: 'text',
+        error: 'FAQ_ERROR'
+      }
+    }
+  }
+
+  // 카테고리별 FAQ 조회
+  public async getFAQsByCategory(category?: string): Promise<ChatResponse> {
+    try {
+      const faqResult = await getFAQs(category)
+      
+      if (faqResult.success && faqResult.faqs.length > 0) {
+        const categoryText = category ? `${category} 관련` : '자주 묻는'
+        return {
+          success: true,
+          message: `${categoryText} 질문들이에요! 📝`,
+          type: 'faq',
+          faqs: faqResult.faqs
+        }
+      } else {
+        return {
+          success: true,
+          message: '현재 표시할 FAQ가 없습니다.',
+          type: 'text'
+        }
+      }
+    } catch (error) {
+      console.error('FAQ Category Error:', error)
+      
+      return {
+        success: false,
+        message: 'FAQ를 불러오는 중 오류가 발생했습니다.',
+        type: 'text',
+        error: 'FAQ_ERROR'
       }
     }
   }
@@ -121,11 +220,42 @@ export class ChatbotService {
   }
 
   // 폴백 응답 생성 (API 오류 시)
-  private getFallbackResponse(message: string): ChatResponse {
+  private async getFallbackResponse(message: string): Promise<ChatResponse> {
     const input = message.toLowerCase()
+    
+    // FAQ 검색 시도
+    if (input.includes('문의') || input.includes('질문') || input.includes('도움') || 
+        input.includes('배송') || input.includes('교환') || input.includes('반품') ||
+        input.includes('보관') || input.includes('사용법')) {
+      try {
+        const faqResult = await this.searchFAQ(message)
+        if (faqResult.success && faqResult.faqs && faqResult.faqs.length > 0) {
+          return faqResult
+        }
+      } catch (error) {
+        console.error('Fallback FAQ search error:', error)
+      }
+    }
     
     // 향수 추천 관련
     if (input.includes('추천') || input.includes('향수')) {
+      // 기본 추천 시도
+      try {
+        const basicPreferences = {
+          fragranceType: input.includes('플로럴') ? ['플로럴'] : 
+                        input.includes('시트러스') ? ['시트러스'] :
+                        input.includes('우디') ? ['우디'] : [],
+          priceRange: { min: 0, max: 300000 }
+        }
+        
+        const recommendationResult = await this.getRecommendations(basicPreferences)
+        if (recommendationResult.success && recommendationResult.recommendations) {
+          return recommendationResult
+        }
+      } catch (error) {
+        console.error('Fallback recommendation error:', error)
+      }
+      
       return {
         success: true,
         message: '어떤 향을 좋아하시나요? 🌹\n• 플로럴 (장미, 재스민)\n• 시트러스 (레몬, 오렌지)\n• 우디 (샌달우드, 시더)\n• 머스크 (부드럽고 따뜻한 향)\n\n원하시는 향을 말씀해주시면 맞춤 추천해드릴게요!',
