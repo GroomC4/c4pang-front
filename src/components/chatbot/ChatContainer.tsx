@@ -31,43 +31,60 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ isOpen, onClose }) => {
     }}>
       <div 
         ref={containerRef}
+        className="chatbot-container"
         style={{
           backgroundColor: 'white',
-          borderRadius: '12px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          border: '1px solid #e5e7eb',
-          width: '350px',
-          height: '500px',
+          borderRadius: 'var(--radius-large)',
+          boxShadow: 'var(--shadow-strong)',
+          border: '1px solid var(--neutral-200)',
+          width: 'min(400px, calc(100vw - 40px))',
+          height: 'min(600px, calc(100vh - 140px))',
           display: 'flex',
           flexDirection: 'column',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          backdropFilter: 'blur(10px)',
+          background: 'linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(252,231,243,0.95) 100%)'
         }}
         tabIndex={-1}
       >
         {/* Header */}
         <div style={{
-          background: 'linear-gradient(to right, #ec4899, #db2777)',
+          background: 'var(--bg-gradient-secondary)',
           color: 'white',
-          padding: '16px',
+          padding: '20px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between'
+          justifyContent: 'space-between',
+          borderRadius: 'var(--radius-large) var(--radius-large) 0 0'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
-              width: '32px',
-              height: '32px',
+              width: '40px',
+              height: '40px',
               backgroundColor: 'rgba(255, 255, 255, 0.2)',
               borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              backdropFilter: 'blur(10px)',
+              border: '2px solid rgba(255, 255, 255, 0.3)'
             }}>
-              <span style={{ fontSize: '14px', fontWeight: 'bold' }}>🌸</span>
+              <span style={{ fontSize: '18px', fontWeight: 'bold' }}>🌸</span>
             </div>
             <div>
-              <h3 style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>퍼퓸퀸 어시스턴트</h3>
-              <p style={{ fontSize: '12px', color: '#fce7f3', margin: 0 }}>향수 추천 전문가</p>
+              <h3 style={{ 
+                fontSize: '16px', 
+                fontWeight: '700', 
+                margin: 0,
+                fontFamily: 'var(--font-elegant)',
+                letterSpacing: '-0.02em'
+              }}>퍼퓸퀸 어시스턴트</h3>
+              <p style={{ 
+                fontSize: '13px', 
+                color: 'rgba(255, 255, 255, 0.8)', 
+                margin: 0,
+                fontWeight: '500'
+              }}>향수 추천 전문가 ✨</p>
             </div>
           </div>
           
@@ -75,16 +92,26 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ isOpen, onClose }) => {
             <button
               onClick={clearMessages}
               style={{
-                padding: '4px',
-                backgroundColor: 'transparent',
+                padding: '8px',
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
                 border: 'none',
                 color: 'white',
                 cursor: 'pointer',
-                borderRadius: '4px'
+                borderRadius: 'var(--radius-small)',
+                transition: 'all 0.3s ease',
+                backdropFilter: 'blur(10px)'
               }}
               title="대화 내용 지우기"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'
+                e.currentTarget.style.transform = 'scale(1.05)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'
+                e.currentTarget.style.transform = 'scale(1)'
+              }}
             >
-              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </button>
@@ -92,16 +119,26 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ isOpen, onClose }) => {
             <button
               onClick={onClose}
               style={{
-                padding: '4px',
-                backgroundColor: 'transparent',
+                padding: '8px',
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
                 border: 'none',
                 color: 'white',
                 cursor: 'pointer',
-                borderRadius: '4px'
+                borderRadius: 'var(--radius-small)',
+                transition: 'all 0.3s ease',
+                backdropFilter: 'blur(10px)'
               }}
               title="챗봇 닫기"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'
+                e.currentTarget.style.transform = 'scale(1.05)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'
+                e.currentTarget.style.transform = 'scale(1)'
+              }}
             >
-              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -146,58 +183,109 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Quick Actions */}
-        <div className="border-t border-gray-100 p-2 bg-gray-50">
-          <div className="flex flex-wrap gap-1">
+        <div className="border-t p-3" style={{
+          borderColor: 'var(--neutral-200)',
+          background: 'linear-gradient(135deg, var(--neutral-100) 0%, var(--accent-pearl) 100%)'
+        }}>
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => !state.isLoading && !state.isTyping && sendMessage('향수 추천해주세요')}
               disabled={state.isLoading || state.isTyping}
               style={{
-                fontSize: '12px',
-                backgroundColor: state.isLoading || state.isTyping ? '#f3f4f6' : '#fce7f3',
-                color: state.isLoading || state.isTyping ? '#9ca3af' : '#be185d',
-                padding: '4px 8px',
-                borderRadius: '9999px',
-                border: 'none',
+                fontSize: '13px',
+                backgroundColor: state.isLoading || state.isTyping ? 'var(--neutral-200)' : 'var(--neutral-100)',
+                color: state.isLoading || state.isTyping ? 'var(--neutral-400)' : 'var(--primary-pink)',
+                padding: '8px 16px',
+                borderRadius: 'var(--radius-xl)',
+                border: state.isLoading || state.isTyping ? '1px solid var(--neutral-300)' : '2px solid var(--primary-pink)',
                 cursor: state.isLoading || state.isTyping ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s',
-                opacity: state.isLoading || state.isTyping ? 0.5 : 1
+                transition: 'all 0.3s ease',
+                opacity: state.isLoading || state.isTyping ? 0.5 : 1,
+                fontWeight: '600',
+                backdropFilter: 'blur(10px)'
+              }}
+              onMouseEnter={(e) => {
+                if (!state.isLoading && !state.isTyping) {
+                  e.currentTarget.style.backgroundColor = 'var(--primary-pink)'
+                  e.currentTarget.style.color = 'white'
+                  e.currentTarget.style.transform = 'translateY(-1px)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!state.isLoading && !state.isTyping) {
+                  e.currentTarget.style.backgroundColor = 'var(--neutral-100)'
+                  e.currentTarget.style.color = 'var(--primary-pink)'
+                  e.currentTarget.style.transform = 'translateY(0)'
+                }
               }}
             >
-              향수 추천
+              ✨ 향수 추천
             </button>
             <button
               onClick={() => !state.isLoading && !state.isTyping && sendMessage('인기 브랜드가 뭐예요?')}
               disabled={state.isLoading || state.isTyping}
               style={{
-                fontSize: '12px',
-                backgroundColor: state.isLoading || state.isTyping ? '#f3f4f6' : '#fce7f3',
-                color: state.isLoading || state.isTyping ? '#9ca3af' : '#be185d',
-                padding: '4px 8px',
-                borderRadius: '9999px',
-                border: 'none',
+                fontSize: '13px',
+                backgroundColor: state.isLoading || state.isTyping ? 'var(--neutral-200)' : 'var(--neutral-100)',
+                color: state.isLoading || state.isTyping ? 'var(--neutral-400)' : 'var(--primary-pink)',
+                padding: '8px 16px',
+                borderRadius: 'var(--radius-xl)',
+                border: state.isLoading || state.isTyping ? '1px solid var(--neutral-300)' : '2px solid var(--primary-pink)',
                 cursor: state.isLoading || state.isTyping ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s',
-                opacity: state.isLoading || state.isTyping ? 0.5 : 1
+                transition: 'all 0.3s ease',
+                opacity: state.isLoading || state.isTyping ? 0.5 : 1,
+                fontWeight: '600',
+                backdropFilter: 'blur(10px)'
+              }}
+              onMouseEnter={(e) => {
+                if (!state.isLoading && !state.isTyping) {
+                  e.currentTarget.style.backgroundColor = 'var(--primary-pink)'
+                  e.currentTarget.style.color = 'white'
+                  e.currentTarget.style.transform = 'translateY(-1px)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!state.isLoading && !state.isTyping) {
+                  e.currentTarget.style.backgroundColor = 'var(--neutral-100)'
+                  e.currentTarget.style.color = 'var(--primary-pink)'
+                  e.currentTarget.style.transform = 'translateY(0)'
+                }
               }}
             >
-              인기 브랜드
+              🔥 인기 브랜드
             </button>
             <button
               onClick={() => !state.isLoading && !state.isTyping && sendMessage('가격대별로 알려주세요')}
               disabled={state.isLoading || state.isTyping}
               style={{
-                fontSize: '12px',
-                backgroundColor: state.isLoading || state.isTyping ? '#f3f4f6' : '#fce7f3',
-                color: state.isLoading || state.isTyping ? '#9ca3af' : '#be185d',
-                padding: '4px 8px',
-                borderRadius: '9999px',
-                border: 'none',
+                fontSize: '13px',
+                backgroundColor: state.isLoading || state.isTyping ? 'var(--neutral-200)' : 'var(--neutral-100)',
+                color: state.isLoading || state.isTyping ? 'var(--neutral-400)' : 'var(--primary-pink)',
+                padding: '8px 16px',
+                borderRadius: 'var(--radius-xl)',
+                border: state.isLoading || state.isTyping ? '1px solid var(--neutral-300)' : '2px solid var(--primary-pink)',
                 cursor: state.isLoading || state.isTyping ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s',
-                opacity: state.isLoading || state.isTyping ? 0.5 : 1
+                transition: 'all 0.3s ease',
+                opacity: state.isLoading || state.isTyping ? 0.5 : 1,
+                fontWeight: '600',
+                backdropFilter: 'blur(10px)'
+              }}
+              onMouseEnter={(e) => {
+                if (!state.isLoading && !state.isTyping) {
+                  e.currentTarget.style.backgroundColor = 'var(--primary-pink)'
+                  e.currentTarget.style.color = 'white'
+                  e.currentTarget.style.transform = 'translateY(-1px)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!state.isLoading && !state.isTyping) {
+                  e.currentTarget.style.backgroundColor = 'var(--neutral-100)'
+                  e.currentTarget.style.color = 'var(--primary-pink)'
+                  e.currentTarget.style.transform = 'translateY(0)'
+                }
               }}
             >
-              가격 정보
+              💰 가격 정보
             </button>
           </div>
         </div>

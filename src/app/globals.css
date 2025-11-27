@@ -2,39 +2,229 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 20대 여성 타겟 테마 색상 */
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+  /* Primary Theme Colors */
+  --primary-pink: #ec4899;
+  --primary-lavender: #c084fc;
+  --primary-rose: #f472b6;
+  
+  /* Secondary Colors */
+  --secondary-purple: #a855f7;
+  --secondary-violet: #8b5cf6;
+  --secondary-indigo: #6366f1;
+  
+  /* Accent Colors */
+  --accent-gold: #f59e0b;
+  --accent-silver: #64748b;
+  --accent-pearl: #f8fafc;
+  
+  /* Neutral Tones */
+  --neutral-50: #fdf7f0;
+  --neutral-100: #fce7f3;
+  --neutral-200: #fbcfe8;
+  --neutral-300: #f9a8d4;
+  --neutral-400: #f472b6;
+  --neutral-500: #ec4899;
+  --neutral-600: #db2777;
+  --neutral-700: #be185d;
+  --neutral-800: #9d174d;
+  --neutral-900: #831843;
+  
+  /* Background Gradients */
+  --bg-gradient-primary: linear-gradient(135deg, #fdf2f8 0%, #f3e8ff 50%, #fce7f3 100%);
+  --bg-gradient-secondary: linear-gradient(135deg, #ec4899 0%, #c084fc 100%);
+  --bg-gradient-accent: linear-gradient(135deg, #f472b6 0%, #a855f7 50%, #6366f1 100%);
+  
+  /* Font Variables */
+  --font-primary: var(--font-noto-sans-kr), var(--font-inter), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-elegant: var(--font-playfair), 'Times New Roman', serif;
+  --font-display: var(--font-playfair), 'Times New Roman', serif;
+  
+  /* Shadows */
+  --shadow-soft: 0 4px 20px rgba(236, 72, 153, 0.1);
+  --shadow-medium: 0 8px 30px rgba(236, 72, 153, 0.15);
+  --shadow-strong: 0 20px 60px rgba(236, 72, 153, 0.2);
+  
+  /* Border Radius */
+  --radius-small: 8px;
+  --radius-medium: 12px;
+  --radius-large: 16px;
+  --radius-xl: 24px;
 }
 
+/* 다크모드 대응 (필요시) */
 @media (prefers-color-scheme: dark) {
   :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
+    --neutral-50: #1f1727;
+    --neutral-100: #2d1b35;
+    --neutral-200: #3d2142;
+    --accent-pearl: #2a1f35;
   }
 }
 
+/* 기본 body 스타일 */
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  font-family: var(--font-primary);
+  background: var(--bg-gradient-primary);
+  color: var(--neutral-800);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 글로벌 스타일 개선 */
+* {
+  box-sizing: border-box;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--neutral-800);
+  text-rendering: optimizeLegibility;
+}
+
+/* Display fonts for hero titles */
+.display-font {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+/* Body text optimization */
+p, span, div {
+  font-family: var(--font-primary);
+  letter-spacing: -0.01em;
+}
+
+/* 버튼 기본 스타일 */
+.btn-primary {
+  background: var(--bg-gradient-secondary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-medium);
+  padding: 12px 24px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-soft);
+}
+
+.btn-primary:hover {
+  box-shadow: var(--shadow-medium);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background: var(--neutral-100);
+  color: var(--primary-pink);
+  border: 2px solid var(--neutral-200);
+  border-radius: var(--radius-medium);
+  padding: 10px 22px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--neutral-200);
+  border-color: var(--primary-pink);
+}
+
+/* Responsive Design for Chatbot */
+.chatbot-container {
+  /* Mobile First Responsive Design */
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Mobile (320px - 768px) */
+@media (max-width: 768px) {
+  .chatbot-container {
+    position: fixed !important;
+    bottom: 20px !important;
+    left: 20px !important;
+    right: 20px !important;
+    width: auto !important;
+    height: calc(100vh - 40px) !important;
+    max-height: calc(100vh - 40px) !important;
+    border-radius: var(--radius-large) !important;
+  }
+  
+  .chatbot-toggle {
+    bottom: 15px !important;
+    right: 15px !important;
+    width: 60px !important;
+    height: 60px !important;
+  }
+}
+
+/* Tablet (768px - 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .chatbot-container {
+    width: min(450px, calc(100vw - 40px)) !important;
+    height: min(650px, calc(100vh - 140px)) !important;
+  }
+}
+
+/* Desktop (1024px+) */
+@media (min-width: 1024px) {
+  .chatbot-container {
+    width: 500px !important;
+    height: 700px !important;
+  }
+}
+
+/* High DPI 디스플레이 최적화 */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .chatbot-container {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* 접근성 개선 */
+@media (prefers-reduced-motion: reduce) {
+  .chatbot-container,
+  .btn-primary,
+  .btn-secondary {
+    transition: none !important;
+    animation: none !important;
+  }
 }
 
 /* Chatbot Animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(15px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
@@ -43,19 +233,22 @@ body {
     transform: translateY(0);
   }
   40% {
-    transform: translateY(-10px);
+    transform: translateY(-12px);
   }
 }
 
 @keyframes pulse {
   0% {
     opacity: 1;
+    transform: scale(1);
   }
   50% {
-    opacity: 0.5;
+    opacity: 0.8;
+    transform: scale(1.02);
   }
   100% {
     opacity: 1;
+    transform: scale(1);
   }
 }
 
@@ -65,5 +258,33 @@ body {
   }
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* 글로우 효과 */
+@keyframes glow {
+  0%, 100% {
+    box-shadow: var(--shadow-soft);
+  }
+  50% {
+    box-shadow: var(--shadow-strong);
   }
 }

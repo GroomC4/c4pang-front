@@ -1,0 +1,7 @@
+export { default as HeroSection } from './HeroSection'
+export { default as AIChatDemo } from './AIChatDemo'
+export { default as AIPreviewSection } from './AIPreviewSection'
+export { default as BestSellersSection } from './BestSellersSection'
+export { default as ReviewCarousel } from './ReviewCarousel'
+export { default as HowItWorksSection } from './HowItWorksSection'
+export { default as NewsletterCTA } from './NewsletterCTA'

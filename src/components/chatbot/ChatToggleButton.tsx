@@ -22,7 +22,7 @@ const ChatToggleButton: React.FC = () => {
   }
 
   return (
-    <div style={{
+    <div className="chatbot-toggle" style={{
       position: 'fixed',
       bottom: '20px',
       right: '20px',
@@ -32,16 +32,20 @@ const ChatToggleButton: React.FC = () => {
       {!state.isOpen && (isHovered || hasNewMessage) && (
         <div style={{
           position: 'absolute',
-          bottom: '70px',
+          bottom: '80px',
           right: '0px',
           backgroundColor: 'white',
-          color: '#374151',
-          padding: '8px 12px',
-          borderRadius: '8px',
-          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-          border: '1px solid #e5e7eb',
+          color: 'var(--neutral-700)',
+          padding: '12px 16px',
+          borderRadius: 'var(--radius-medium)',
+          boxShadow: 'var(--shadow-medium)',
+          border: '2px solid var(--neutral-200)',
           fontSize: '14px',
-          whiteSpace: 'nowrap'
+          fontWeight: '600',
+          whiteSpace: 'nowrap',
+          backdropFilter: 'blur(10px)',
+          background: 'linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(252,231,243,0.9) 100%)',
+          animation: 'float 2s ease-in-out infinite'
         }}>
           {hasNewMessage ? '새 메시지가 있어요! 💌' : '향수 추천받기 🌸'}
         </div>
@@ -53,19 +57,20 @@ const ChatToggleButton: React.FC = () => {
         onMouseLeave={() => setIsHovered(false)}
         style={{
           position: 'relative',
-          width: '60px',
-          height: '60px',
+          width: '70px',
+          height: '70px',
           borderRadius: '50%',
-          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-          background: 'linear-gradient(to right, #ec4899, #db2777)',
+          boxShadow: 'var(--shadow-strong)',
+          background: 'var(--bg-gradient-secondary)',
           color: 'white',
-          border: 'none',
+          border: '3px solid rgba(255, 255, 255, 0.2)',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          transition: 'all 0.3s ease',
-          transform: isHovered ? 'scale(1.1)' : 'scale(1)'
+          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+          transform: isHovered ? 'scale(1.1) translateY(-2px)' : 'scale(1)',
+          backdropFilter: 'blur(10px)'
         }}
         aria-label={state.isOpen ? '챗봇 닫기' : '챗봇 열기'}
       >
