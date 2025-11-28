@@ -1,148 +1,176 @@
-애플리케이션 아키텍처 (Application Architecture)
+C4pang
 
-본 프로젝트는 Next.js 16과 React 19 기반의 계층형 아키텍처를 따른다.
-프레임워크 설정 → UI 컴포넌트 → 서비스 계층 → 데이터 계층 순으로 구성되어 있다.
+AI 기반 향수 추천 이커머스 웹 애플리케이션
 
-핵심 아키텍처 패턴
-패턴	구현 요소	목적
-Context API	AuthProvider, CartProvider, ChatbotProvider	전역 상태 관리
-Singleton	ChatbotService	챗봇 로직 단일 인스턴스 관리
-API Proxy	next.config.js rewrites	/api/* 요청을 localhost:8081로 프록시
-Mock Data	mockData.ts	개발/데모용 데이터
-Layout System	RootLayout	전역 레이아웃 및 폰트 설정
-핵심 시스템 (Core Systems)
+1. 소개 (Overview)
 
-애플리케이션은 다음의 5개 주요 시스템으로 구성된다.
+C4pang은 AI를 활용하여 향수를 추천하고 구매할 수 있는 웹 기반 이커머스 애플리케이션이다.
+Next.js 16과 React 19를 기반으로 구축되었으며, 사용자는 챗봇을 통해 취향에 맞는 향수를 추천받거나 기존 이커머스 방식으로 상품을 탐색하고 구매할 수 있다.
 
-1. 인증 시스템 (Authentication System)
+본 문서는 애플리케이션의 아키텍처, 핵심 기능, 기술 스택, 디렉토리 구조, 개발 환경 등을 전체적으로 정리한 문서이다.
 
-Auth0 기반 로그인, 회원가입, 세션 관리
+2. 주요 기능 (Features)
+2.1 AI 챗봇 추천 시스템
 
-useAuth() 훅 제공
+대화형 인터페이스를 통한 향수 추천
 
-주요 위치: AuthContext, /app/login, /app/signup
-
-2. 이커머스 시스템 (E-commerce System)
-
-장바구니 추가/삭제/수량 변경
-
-상품 목록 및 상세 페이지
-
-주문 처리 흐름
-
-주요 위치: CartContext, components/cart/*
-
-3. AI 챗봇 시스템 (AI Chatbot System)
-
-대화 기반 향수 추천
+사용자 취향 기반 추천 알고리즘
 
 실시간 메시지 처리 및 타이핑 애니메이션
 
-백엔드 연동 실패 시 mockData 기반 fallback
+API 장애 시 mockData 기반 fallback 기능 제공
 
-주요 위치: ChatbotContext, ChatbotService, Chatbot.tsx
+2.2 이커머스 기능
 
-4. 내비게이션 및 레이아웃 시스템 (Navigation & Layout)
+장바구니 담기, 삭제, 수량 변경
 
-상단 헤더, 카트 표시, 인증 UI
+상품 목록 및 상세 페이지
 
-페이지 간 라우팅
+주문 처리 및 확인
 
-전역 레이아웃 구성
+베스트셀러 및 상품 프리뷰 제공
 
-주요 위치: Header.tsx, app/layout.tsx
+2.3 인증 시스템
 
-5. 홈 페이지 경험 (Home Page Experience)
+Auth0 기반 로그인/회원가입
 
-랜딩 페이지 섹션
+세션 유지 및 보호된 페이지 접근 관리
 
-데모 챗봇 경험
+useAuth() 훅 제공
 
-상품 프리뷰 및 베스트셀러 섹션
+2.4 레이아웃 및 내비게이션
 
-주요 위치: app/page.tsx, components/home/*
+전역 Header, Footer
 
-기술 스택 (Technology Stack)
-분류	기술	버전	역할
-Framework	Next.js	16.0.4	SSR/SSG React 프레임워크
-UI Library	React	19.2.0	컴포넌트 기반 UI
+인증 상태 및 카트 상태 표시
+
+Next.js App Router 기반의 페이지 전환
+
+3. 아키텍처 (Application Architecture)
+
+본 프로젝트는 Next.js App Router 기반의 계층형 아키텍처를 따른다.
+
+3.1 아키텍처 패턴
+패턴	구현 요소	목적
+Context API	AuthProvider, CartProvider, ChatbotProvider	전역 상태 관리
+Singleton	ChatbotService	챗봇 로직의 단일 인스턴스 유지
+API Proxy	next.config.js rewrites	/api/* 요청 → localhost:8081 프록시
+Mock Data	mockData.ts	개발 및 데모용 fallback 데이터
+Layout System	RootLayout	글로벌 레이아웃 및 폰트 설정
+3.2 데이터 흐름 구조 (Data Flow)
+
+애플리케이션은 단방향 데이터 흐름(Unidirectional Flow)을 따른다.
+
+사용자 → 컴포넌트 (UI 이벤트 발생)
+
+컴포넌트 → 훅 호출 (useAuth, useCart, useChatbot)
+
+훅 → Provider (Context 기반 상태 소비)
+
+Provider → Service 호출
+
+Service → axios API 요청
+
+API → Backend (next.config.js proxy 경유)
+
+Backend 응답
+
+Service에서 Provider로 상태 업데이트
+
+Provider 상태 변경 → UI 리렌더링
+
+3.3 Fallback 전략
+
+백엔드 API 장애 시 ChatbotService는 자동으로 mockData를 사용하여 챗봇 기능이 중단되지 않도록 한다.
+
+4. 기술 스택 (Technology Stack)
+4.1 주요 기술
+분류	기술	버전	설명
+Framework	Next.js	16.0.4	React 기반 SSR/SSG 프레임워크
+UI Library	React	19.2.0	컴포넌트 기반 UI 라이브러리
 Language	TypeScript	5.9.3	정적 타입
-Styling	Tailwind CSS	3.4.18	유틸리티 CSS
-Animation	Framer Motion	12.23.24	애니메이션
-Icons	lucide-react	0.555.0	아이콘
-HTTP Client	axios	1.13.2	API 호출
-Authentication	Auth0 SDK	4.13.1	인증
-State Management	Context API	내장	전역 상태
-Build Tools	PostCSS, Autoprefixer	8.5.6, 10.4.22	CSS 전처리
-프로젝트 구조 (Project Structure)
+Styling	Tailwind CSS	3.4.18	유틸리티 CSS 프레임워크
+Animation	Framer Motion	12.23.24	UI 애니메이션
+Icons	lucide-react	0.555.0	아이콘 라이브러리
+Auth	@auth0/nextjs-auth0	4.13.1	Auth0 인증
+HTTP Client	axios	1.13.2	API 요청
+Build Tools	PostCSS, Autoprefixer	8.5.6, 10.4.22	CSS 빌드 처리
+4.2 개발 도구
+
+Node.js
+
+ESLint
+
+Prettier
+
+Express (dev server)
+
+5. 프로젝트 구조 (Project Structure)
 src/
- ├─ app/                  # Next.js App Router 라우팅
- ├─ components/           # 재사용 가능한 UI 컴포넌트
- ├─ contexts/             # 전역 상태 관리 (Auth, Cart, Chatbot)
- ├─ services/             # 비즈니스 로직 및 API 통신
- ├─ data/                 # 개발 및 테스트용 mock 데이터
- ├─ types/                # 타입 정의
- └─ utils/                # 공통 유틸 함수
+ ├─ app/                   # Next.js App Router 라우팅
+ │   ├─ layout.tsx         # 전체 레이아웃
+ │   ├─ page.tsx           # 메인 페이지
+ │   └─ ...                # 기타 라우트 페이지
+ ├─ components/            # UI 컴포넌트
+ ├─ contexts/              # Auth, Cart, Chatbot 전역 상태 관리
+ ├─ services/              # 비즈니스 로직 및 API 연동
+ ├─ data/                  # mockData
+ ├─ types/                 # TypeScript 타입 정의
+ └─ utils/                 # 공통 유틸 함수
 
-데이터 플로우 아키텍처 (Data Flow Architecture)
+6. 설치 및 실행 (Getting Started)
+6.1 사전 요구사항
 
-애플리케이션 데이터 흐름은 단방향(unidirectional) 구조를 따른다.
+Node.js (LTS 버전)
 
-사용자 → 컴포넌트: 이벤트 발생
+npm 또는 yarn
 
-컴포넌트 → Hook: useAuth, useCart, useChatbot 사용
+6.2 설치
+npm install
 
-Hook → Provider: Context provider에서 상태 제공
+6.3 개발 서버 실행
+npm run dev
 
-Provider → Service: 비즈니스 로직 수행
 
-Service → API: axios로 백엔드 호출
+접속: http://localhost:3000
 
-API → Backend: next.config.js 프록시 설정 기반 요청 전달
+6.4 프로덕션 빌드
+npm run build
+npm run start
 
-Backend → Service: 응답 수신
+6.5 린트 검사
+npm run lint
 
-Service → Provider: 상태 업데이트
+7. 환경 변수 (Environment Variables)
 
-Provider → Component: UI 리렌더링
+예시:
 
-Fallback 전략
+AUTH0_SECRET=...
+AUTH0_BASE_URL=http://localhost:3000
+AUTH0_ISSUER_BASE_URL=...
+AUTH0_CLIENT_ID=...
+AUTH0_CLIENT_SECRET=...
+BACKEND_API_URL=http://localhost:8081
 
-백엔드 API가 실패할 경우 ChatbotService는 mockData.ts를 사용해 챗봇 기능을 계속 제공한다.
+8. API 프록시 설정 (API Proxy Configuration)
 
-개발 워크플로우 (Development Workflow)
-NPM Scripts
-명령어	설명
-npm run dev	개발 서버 실행 (http://localhost:3000
-)
-npm run build	프로덕션 빌드
-npm run start	빌드 결과로 서버 실행
-npm run lint	ESLint 검사
-개발 환경
+Next.js의 rewrite 설정을 통해 프론트엔드에서의 /api/* 요청을 백엔드로 전달한다.
 
-Frontend: http://localhost:3000
+// next.config.js
+rewrites: async () => [
+  {
+    source: "/api/:path*",
+    destination: "http://localhost:8081/:path*",
+  },
+];
 
-Backend API: http://localhost:8081
- (프록시 기반)
-
-빌드 파이프라인
-
-TypeScript strict 모드
-
-Tailwind + PostCSS 처리
-
-Next.js 코드 스플리팅, 이미지 최적화
-
-WebP 기반 이미지 설정
-
-주요 엔트리 포인트 (Entry Points)
-파일	역할
-app/layout.tsx	전체 레이아웃, 폰트, Provider 등록
-app/page.tsx	홈 페이지
-next.config.js	Next.js 설정 및 프록시 라우팅
-ChatbotContext.tsx	챗봇 전역 상태 관리
-CartContext.tsx	장바구니 전역 상태 관리
-AuthContext.tsx	인증 전역 상태 관리
-ChatbotService.ts	챗봇 비즈니스 로직
-mockData.ts	개발용 데이터
-Header.tsx	상단 네비게이션 UI
+9. 주요 코드 엔트리 포인트 (Key Entry Points)
+파일	설명
+app/layout.tsx	Root Layout, Provider 설정
+app/page.tsx	메인 랜딩 페이지
+ChatbotContext.tsx	챗봇 상태 관리
+CartContext.tsx	장바구니 전역 상태
+AuthContext.tsx	인증 전역 상태
+services/chatbot/ChatbotService.ts	챗봇 비즈니스 로직
+data/mockData.ts	fallback 데이터
+components/layout/Header.tsx	상단 UI
