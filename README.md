@@ -51,12 +51,14 @@ Next.js App Router 기반의 페이지 전환
 본 프로젝트는 Next.js App Router 기반의 계층형 아키텍처를 따른다.
 
 3.1 아키텍처 패턴
-패턴	구현 요소	목적
-Context API	AuthProvider, CartProvider, ChatbotProvider	전역 상태 관리
-Singleton	ChatbotService	챗봇 로직의 단일 인스턴스 유지
-API Proxy	next.config.js rewrites	/api/* 요청 → localhost:8081 프록시
-Mock Data	mockData.ts	개발 및 데모용 fallback 데이터
-Layout System	RootLayout	글로벌 레이아웃 및 폰트 설정
+| 패턴            | 구현 요소                                       | 목적                                 |
+| ------------- | ------------------------------------------- | ---------------------------------- |
+| Context API   | AuthProvider, CartProvider, ChatbotProvider | 전역 상태 관리                           |
+| Singleton     | ChatbotService                              | 챗봇 로직의 단일 인스턴스 유지                  |
+| API Proxy     | next.config.js rewrites                     | `/api/*` 요청 → `localhost:8081` 프록시 |
+| Mock Data     | mockData.ts                                 | 개발 및 데모용 fallback 데이터              |
+| Layout System | RootLayout                                  | 글로벌 레이아웃 및 폰트 설정                   |
+
 3.2 데이터 흐름 구조 (Data Flow)
 
 애플리케이션은 단방향 데이터 흐름(Unidirectional Flow)을 따른다.
@@ -86,15 +88,18 @@ Provider 상태 변경 → UI 리렌더링
 4. 기술 스택 (Technology Stack)
 4.1 주요 기술
 분류	기술	버전	설명
-Framework	Next.js	16.0.4	React 기반 SSR/SSG 프레임워크
-UI Library	React	19.2.0	컴포넌트 기반 UI 라이브러리
-Language	TypeScript	5.9.3	정적 타입
-Styling	Tailwind CSS	3.4.18	유틸리티 CSS 프레임워크
-Animation	Framer Motion	12.23.24	UI 애니메이션
-Icons	lucide-react	0.555.0	아이콘 라이브러리
-Auth	@auth0/nextjs-auth0	4.13.1	Auth0 인증
-HTTP Client	axios	1.13.2	API 요청
-Build Tools	PostCSS, Autoprefixer	8.5.6, 10.4.22	CSS 빌드 처리
+| 분류          | 기술                    | 버전             | 설명                     |
+| ----------- | --------------------- | -------------- | ---------------------- |
+| Framework   | Next.js               | 16.0.4         | React 기반 SSR/SSG 프레임워크 |
+| UI Library  | React                 | 19.2.0         | 컴포넌트 기반 UI 라이브러리       |
+| Language    | TypeScript            | 5.9.3          | 정적 타입                  |
+| Styling     | Tailwind CSS          | 3.4.18         | 유틸리티 CSS 프레임워크         |
+| Animation   | Framer Motion         | 12.23.24       | UI 애니메이션               |
+| Icons       | lucide-react          | 0.555.0        | 아이콘 라이브러리              |
+| Auth        | @auth0/nextjs-auth0   | 4.13.1         | Auth0 인증               |
+| HTTP Client | axios                 | 1.13.2         | API 요청                 |
+| Build Tools | PostCSS, Autoprefixer | 8.5.6, 10.4.22 | CSS 빌드 처리              |
+
 4.2 개발 도구
 
 Node.js
