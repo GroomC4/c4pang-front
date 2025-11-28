@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter, Noto_Sans_KR, Playfair_Display } from 'next/font/google'
+import { AuthProvider } from '@/contexts/AuthContext'
 import { ChatbotProvider } from '@/contexts/ChatbotContext'
 import { CartProvider } from '@/contexts/CartContext'
 import './globals.css'
@@ -37,11 +38,13 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className={`${inter.variable} ${notoSansKR.variable} ${playfairDisplay.variable}`}>
-        <CartProvider>
-          <ChatbotProvider>
-            {children}
-          </ChatbotProvider>
-        </CartProvider>
+        <AuthProvider>
+          <CartProvider>
+            <ChatbotProvider>
+              {children}
+            </ChatbotProvider>
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   )

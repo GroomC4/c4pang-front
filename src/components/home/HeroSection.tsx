@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { Sparkles, MessageCircle, ArrowDown } from 'lucide-react'
@@ -9,7 +9,28 @@ interface HeroSectionProps {
   onChatStart: () => void
 }
 
+interface FloatingElement {
+  id: number
+  left: number
+  top: number
+  delay: number
+  duration: number
+}
+
 const HeroSection: React.FC<HeroSectionProps> = ({ onChatStart }) => {
+  const [floatingElements, setFloatingElements] = useState<FloatingElement[]>([])
+
+  useEffect(() => {
+    const elements = Array.from({ length: 20 }, (_, i) => ({
+      id: i,
+      left: (i * 17 + 23) % 100,
+      top: (i * 31 + 11) % 100,
+      delay: (i * 0.3) % 2,
+      duration: 3 + (i % 3),
+    }))
+    setFloatingElements(elements)
+  }, [])
+
   return (
     <div className="relative h-screen flex items-center justify-center overflow-hidden">
       {/* Background Image */}
@@ -30,22 +51,22 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onChatStart }) => {
       
       {/* Floating Elements */}
       <div className="absolute inset-0">
-        {[...Array(20)].map((_, i) => (
+        {floatingElements.map((element) => (
           <motion.div
-            key={i}
+            key={element.id}
             className="absolute w-2 h-2 bg-pink-200 rounded-full opacity-40"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
+              left: `${element.left}%`,
+              top: `${element.top}%`,
             }}
             animate={{
               y: [-20, 20, -20],
               opacity: [0.2, 0.6, 0.2],
             }}
             transition={{
-              duration: 3 + Math.random() * 2,
+              duration: element.duration,
               repeat: Infinity,
-              delay: Math.random() * 2,
+              delay: element.delay,
             }}
           />
         ))}

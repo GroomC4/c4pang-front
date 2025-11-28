@@ -68,7 +68,7 @@ export function Header({
               <div className="flex items-center gap-3">
                 <div className="hidden sm:flex items-center gap-2 text-gray-700">
                   <User className="w-4 h-4" />
-                  <span className="text-sm">{user.name}</span>
+                  <span className="text-sm">{user.username || user.email}님</span>
                 </div>
                 <button
                   onClick={onLogout}

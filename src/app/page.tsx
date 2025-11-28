@@ -14,9 +14,9 @@ import {
 } from '@/components/home'
 import { useChatbot } from '@/contexts/ChatbotContext'
 import { useCart } from '@/contexts/CartContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { Cart } from '@/components/cart/Cart'
 import Chatbot from '@/components/chatbot/Chatbot'
-import { User } from '@/types'
 
 const HomePage: React.FC = () => {
   const { toggleChatbot } = useChatbot()
@@ -30,9 +30,7 @@ const HomePage: React.FC = () => {
     updateQuantity, 
     removeItem 
   } = useCart()
-
-  // 임시로 user를 null로 설정하여 로그인되지 않은 상태로 표시
-  const user: User | null = null
+  const { user, logout } = useAuth()
 
   const handleChatStart = () => {
     toggleChatbot()
@@ -42,6 +40,7 @@ const HomePage: React.FC = () => {
     <main className="min-h-screen">
       <Header 
         user={user} 
+        onLogout={logout}
         cartItemCount={totalItems}
         onCartClick={openCart}
       />

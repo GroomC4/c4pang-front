@@ -1,13 +1,35 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Mail, Send, Check, Gift, Sparkles } from 'lucide-react'
+
+interface FloatingElement {
+  id: number
+  left: number
+  top: number
+  delay: number
+  duration: number
+}
 
 const NewsletterCTA: React.FC = () => {
   const [email, setEmail] = useState('')
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [floatingElements, setFloatingElements] = useState<FloatingElement[]>([])
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+    const elements = Array.from({ length: 50 }, (_, i) => ({
+      id: i,
+      left: (i * 17 + 23) % 100,
+      top: (i * 31 + 11) % 100,
+      delay: (i * 0.3) % 2,
+      duration: 3 + (i % 3),
+    }))
+    setFloatingElements(elements)
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,13 +49,13 @@ const NewsletterCTA: React.FC = () => {
     <div className="py-20 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 relative overflow-hidden">
       {/* Background Elements */}
       <div className="absolute inset-0">
-        {[...Array(50)].map((_, i) => (
+        {isMounted && floatingElements.map((element) => (
           <motion.div
-            key={i}
+            key={element.id}
             className="absolute w-1 h-1 bg-white rounded-full opacity-20"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
+              left: `${element.left}%`,
+              top: `${element.top}%`,
             }}
             animate={{
               y: [-10, 10, -10],
@@ -41,9 +63,9 @@ const NewsletterCTA: React.FC = () => {
               scale: [1, 1.5, 1],
             }}
             transition={{
-              duration: 3 + Math.random() * 2,
+              duration: element.duration,
               repeat: Infinity,
-              delay: Math.random() * 2,
+              delay: element.delay,
             }}
           />
         ))}
