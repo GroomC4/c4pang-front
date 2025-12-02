@@ -113,6 +113,7 @@ export interface ChatbotContextType {
   state: ChatbotState
   sendMessage: (content: string) => Promise<void>
   addProductToCart: (productId: string, quantity: number) => Promise<void>
+  viewCart: () => void
   startCheckout: (mode: 'cart' | 'direct', productId?: string) => void
   submitShipping: (info: ShippingInfo) => void
   submitPayment: (method: PaymentMethod) => Promise<void>
@@ -122,6 +123,7 @@ export interface ChatbotContextType {
   clearMessages: () => void
   updatePreferences: (preferences: Partial<UserPreferences>) => void
   updateUserId: (userId?: string) => void
+  handleQuickAction: (action: QuickActionItem) => Promise<void>
 }
 
 export interface MessageProps {
@@ -136,4 +138,12 @@ export interface MessageInputProps {
 export interface ChatContainerProps {
   isOpen: boolean
   onClose: () => void
+}
+
+export interface ErrorResponse {
+  type: 'network' | 'validation' | 'business'
+  message: string
+  code: string
+  retryable: boolean
+  fallbackAction?: QuickActionItem
 }

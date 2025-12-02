@@ -13,18 +13,54 @@ interface MessageListProps {
 const MessageList: React.FC<MessageListProps> = ({ messages, isTyping }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const isUserScrollingRef = useRef(false)
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    messagesEndRef.current?.scrollIntoView({ behavior })
   }
 
+  // Detect if user is manually scrolling
+  const handleScroll = () => {
+    if (!scrollAreaRef.current) return
+
+    const { scrollTop, scrollHeight, clientHeight } = scrollAreaRef.current
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight
+
+    // If user is more than 100px from bottom, they're likely scrolling through history
+    isUserScrollingRef.current = distanceFromBottom > 100
+
+    // Clear existing timeout
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current)
+    }
+
+    // Reset user scrolling flag after 1 second of no scroll activity
+    scrollTimeoutRef.current = setTimeout(() => {
+      isUserScrollingRef.current = false
+    }, 1000)
+  }
+
+  // Auto-scroll when new messages arrive, but only if user isn't scrolling
   useEffect(() => {
-    scrollToBottom()
+    if (!isUserScrollingRef.current) {
+      scrollToBottom()
+    }
   }, [messages, isTyping])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
+      }
+    }
+  }, [])
 
   return (
     <div 
       ref={scrollAreaRef}
+      onScroll={handleScroll}
       style={{
         flex: '1',
         overflowY: 'auto',

@@ -12,10 +12,8 @@ import {
   QuickActionItem
 } from '@/types/chatbot'
 import { sendChatMessage } from '@/services/chatbotService'
-import { sendMockChatMessage } from '@/services/mockChatbotService'
 import { useCart } from './CartContext'
 import { CartItem } from '@/types'
-import { parseError, getErrorActions } from '@/utils/errorHandler'
 
 const generateSessionId = (): string => {
   return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -204,29 +202,12 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
     dispatch({ type: 'SET_LOADING', payload: true })
     dispatch({ type: 'SET_TYPING', payload: true })
 
-    // 3초 후 대기 메시지 표시
-    let delayMessageId: string | null = null
-    const delayTimeout = setTimeout(() => {
-      delayMessageId = generateMessageId()
-      const delayMessage: Message = {
-        id: delayMessageId,
-        content: '조금만 기다려주세요... 최적의 답변을 준비하고 있어요! ⏳',
-        sender: 'bot',
-        timestamp: new Date(),
-        type: 'text'
-      }
-      dispatch({ type: 'ADD_MESSAGE', payload: delayMessage })
-    }, 3000)
-
     try {
       // 실제 API 호출
       const response = await sendChatMessage(content, {
         previousMessages: state.messages.slice(-10), // 최근 10개 메시지만 컨텍스트로 전송
         conversationContext: state.conversationContext
       })
-
-      // 대기 메시지가 표시되었다면 제거
-      clearTimeout(delayTimeout)
 
       // API 응답을 메시지로 변환
       const botMessage: Message = {
@@ -245,56 +226,16 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
       
       dispatch({ type: 'ADD_MESSAGE', payload: botMessage })
       
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to send message:', error)
       
-      // 대기 메시지 타이머 정리
-      clearTimeout(delayTimeout)
-      
-      // Parse error using error handler utility
-      const errorResponse = parseError(error)
-      
-      // Try fallback to mock data for network errors
-      if (errorResponse.type === 'network') {
-        try {
-          console.log('Attempting fallback to mock data...')
-          const mockResponse = await sendMockChatMessage(content, {
-            previousMessages: state.messages.slice(-10),
-            conversationContext: state.conversationContext
-          })
-
-          const fallbackMessage: Message = {
-            id: generateMessageId(),
-            content: `⚠️ 오프라인 모드로 전환되었습니다.\n\n${mockResponse.message}`,
-            sender: 'bot',
-            timestamp: new Date(),
-            type: mockResponse.type || 'text',
-            data: {
-              products: mockResponse.products,
-              recommendations: mockResponse.recommendations
-            }
-          }
-          
-          dispatch({ type: 'ADD_MESSAGE', payload: fallbackMessage })
-          return
-        } catch (fallbackError) {
-          console.error('Fallback also failed:', fallbackError)
-        }
-      }
-      
-      // Get appropriate quick actions
-      const quickActions = getErrorActions(errorResponse, { action: 'retry_message', content })
-      
-      // 오류 메시지
+      // 오류 시 폴백 메시지
       const errorMessage: Message = {
         id: generateMessageId(),
-        content: errorResponse.message,
+        content: '죄송합니다. 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요. 🙏',
         sender: 'bot',
         timestamp: new Date(),
-        type: 'text',
-        data: {
-          quickActions: quickActions.length > 0 ? quickActions : undefined
-        }
+        type: 'text'
       }
       
       dispatch({ type: 'ADD_MESSAGE', payload: errorMessage })
@@ -352,7 +293,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
       if (!productInfo) {
         // If product not found in messages, show error
         const errorMessage: Message = {
-          id: generateMessageId(),
+          id: Date.now().toString(),
           content: '상품 정보를 찾을 수 없습니다. 다시 시도해주세요.',
           sender: 'bot',
           timestamp: new Date(),
@@ -390,7 +331,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
 
       // Show success message with cart status
       const successMessage: Message = {
-        id: generateMessageId(),
+        id: Date.now().toString(),
         content: `✅ ${productInfo.name}이(가) 장바구니에 추가되었습니다!\n\n현재 장바구니: ${cart.totalItems + 1}개 상품, 총 ${(cart.totalPrice + productInfo.price).toLocaleString()}원`,
         sender: 'bot',
         timestamp: new Date(),
@@ -417,7 +358,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
       console.error('Failed to add product to cart:', error)
       
       const errorMessage: Message = {
-        id: generateMessageId(),
+        id: Date.now().toString(),
         content: '장바구니에 상품을 추가하는 중 오류가 발생했습니다. 다시 시도해주세요.',
         sender: 'bot',
         timestamp: new Date(),
@@ -443,7 +384,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
 
       if (!productInfo) {
         const errorMessage: Message = {
-          id: generateMessageId(),
+          id: Date.now().toString(),
           content: '상품 정보를 찾을 수 없습니다. 다시 시도해주세요.',
           sender: 'bot',
           timestamp: new Date(),
@@ -469,7 +410,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
       // For cart mode, get items from CartContext
       if (cart.items.length === 0) {
         const emptyMessage: Message = {
-          id: generateMessageId(),
+          id: Date.now().toString(),
           content: '장바구니가 비어있습니다. 😊\n상품을 먼저 담아주세요.',
           sender: 'bot',
           timestamp: new Date(),
@@ -488,7 +429,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
 
     // Add checkout start message
     const checkoutMessage: Message = {
-      id: generateMessageId(),
+      id: Date.now().toString(),
       content: '결제를 시작합니다. 배송지 정보를 입력해주세요.',
       sender: 'bot',
       timestamp: new Date(),
@@ -507,7 +448,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
 
     // Add payment selection message
     const paymentMessage: Message = {
-      id: generateMessageId(),
+      id: Date.now().toString(),
       content: '배송지 정보가 저장되었습니다. 결제 수단을 선택해주세요.',
       sender: 'bot',
       timestamp: new Date(),
@@ -526,7 +467,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
 
     // Show confirmation step with order summary
     const confirmMessage: Message = {
-      id: generateMessageId(),
+      id: Date.now().toString(),
       content: '결제 수단이 선택되었습니다. 주문을 확인해주세요.',
       sender: 'bot',
       timestamp: new Date(),
@@ -543,7 +484,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
   const confirmOrder = useCallback(async () => {
     if (!state.checkoutState || !state.checkoutState.shippingInfo || !state.checkoutState.paymentMethod) {
       const errorMessage: Message = {
-        id: generateMessageId(),
+        id: Date.now().toString(),
         content: '배송지 정보 또는 결제 수단이 누락되었습니다.',
         sender: 'bot',
         timestamp: new Date(),
@@ -580,7 +521,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
       const estimatedDelivery = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
 
       const orderMessage: Message = {
-        id: generateMessageId(),
+        id: Date.now().toString(),
         content: '주문이 완료되었습니다! 🎉',
         sender: 'bot',
         timestamp: new Date(),
@@ -626,30 +567,58 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
     } catch (error: any) {
       console.error('Failed to confirm order:', error)
       
-      // Parse error using error handler utility
-      const errorResponse = parseError(error)
-      
-      // Get appropriate quick actions
-      const quickActions = getErrorActions(errorResponse, { action: 'retry_order' })
-      
-      // Add back to cart action for non-retryable errors
-      if (!errorResponse.retryable) {
-        quickActions.push({
-          id: 'back_to_cart',
-          label: '장바구니로 돌아가기',
-          type: 'secondary',
-          payload: { action: 'view_cart' }
-        })
+      // Determine error type and message
+      let errorContent = '주문 처리 중 오류가 발생했습니다.'
+      let retryable = true
+
+      if (error.response) {
+        // Backend returned an error
+        const status = error.response.status
+        if (status === 400) {
+          errorContent = '주문 정보가 올바르지 않습니다. 다시 확인해주세요.'
+          retryable = false
+        } else if (status === 401 || status === 403) {
+          errorContent = '로그인이 필요합니다.'
+          retryable = false
+        } else if (status === 404) {
+          errorContent = '상품을 찾을 수 없습니다.'
+          retryable = false
+        } else if (status >= 500) {
+          errorContent = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+        }
+      } else if (error.request) {
+        // Network error
+        errorContent = '네트워크 연결을 확인해주세요.'
       }
       
       const errorMessage: Message = {
-        id: generateMessageId(),
-        content: errorResponse.message,
+        id: Date.now().toString(),
+        content: errorContent,
         sender: 'bot',
         timestamp: new Date(),
         type: 'text',
         data: {
-          quickActions: quickActions.length > 0 ? quickActions : undefined
+          quickActions: retryable ? [
+            {
+              id: 'retry_order',
+              label: '다시 시도',
+              type: 'primary',
+              payload: { action: 'retry_order' }
+            },
+            {
+              id: 'cancel_order',
+              label: '취소',
+              type: 'secondary',
+              payload: { action: 'cancel_checkout' }
+            }
+          ] : [
+            {
+              id: 'back_to_cart',
+              label: '장바구니로 돌아가기',
+              type: 'secondary',
+              payload: { action: 'view_cart' }
+            }
+          ]
         }
       }
       dispatch({ type: 'ADD_MESSAGE', payload: errorMessage })
@@ -662,7 +631,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
     dispatch({ type: 'CANCEL_CHECKOUT' })
 
     const cancelMessage: Message = {
-      id: generateMessageId(),
+      id: Date.now().toString(),
       content: '결제가 취소되었습니다.',
       sender: 'bot',
       timestamp: new Date(),
@@ -710,7 +679,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
   const viewCart = useCallback(() => {
     if (cart.items.length === 0) {
       const emptyMessage: Message = {
-        id: generateMessageId(),
+        id: Date.now().toString(),
         content: '장바구니가 비어있습니다. 😊\n마음에 드는 향수를 찾아볼까요?',
         sender: 'bot',
         timestamp: new Date(),
@@ -738,7 +707,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
 
     // Create QuickActions for each cart item
     const cartMessage: Message = {
-      id: generateMessageId(),
+      id: Date.now().toString(),
       content: `🛒 장바구니 (${cart.totalItems}개 상품, 총 ${cart.totalPrice.toLocaleString()}원)`,
       sender: 'bot',
       timestamp: new Date(),
@@ -774,16 +743,9 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
   const handleQuickAction = useCallback(async (action: QuickActionItem) => {
     if (!action.payload) return
 
-    const { action: actionType, productId, content } = action.payload
+    const { action: actionType, productId } = action.payload
 
     switch (actionType) {
-      case 'retry_message':
-        // Retry sending the message
-        if (content) {
-          await sendMessage(content)
-        }
-        break
-
       case 'increase':
         // Increase quantity in cart
         if (productId) {
@@ -792,7 +754,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
             cart.updateQuantity(productId, item.quantity + 1)
             
             const message: Message = {
-              id: generateMessageId(),
+              id: Date.now().toString(),
               content: `✅ 수량이 증가되었습니다. (${item.quantity} → ${item.quantity + 1}개)`,
               sender: 'bot',
               timestamp: new Date(),
@@ -812,7 +774,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
               cart.updateQuantity(productId, item.quantity - 1)
               
               const message: Message = {
-                id: generateMessageId(),
+                id: Date.now().toString(),
                 content: `✅ 수량이 감소되었습니다. (${item.quantity} → ${item.quantity - 1}개)`,
                 sender: 'bot',
                 timestamp: new Date(),
@@ -824,7 +786,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
               cart.updateQuantity(productId, 0)
               
               const message: Message = {
-                id: generateMessageId(),
+                id: Date.now().toString(),
                 content: `✅ 상품이 장바구니에서 제거되었습니다.`,
                 sender: 'bot',
                 timestamp: new Date(),
@@ -844,7 +806,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
             cart.removeItem(productId)
             
             const message: Message = {
-              id: generateMessageId(),
+              id: Date.now().toString(),
               content: `✅ ${item.name}이(가) 장바구니에서 제거되었습니다.`,
               sender: 'bot',
               timestamp: new Date(),
@@ -864,7 +826,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
         // Clear all items from cart
         cart.clearCart()
         const clearMessage: Message = {
-          id: generateMessageId(),
+          id: Date.now().toString(),
           content: '✅ 장바구니가 비워졌습니다.',
           sender: 'bot',
           timestamp: new Date(),
@@ -881,7 +843,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
       case 'continue_shopping':
         // Just acknowledge
         const continueMessage: Message = {
-          id: generateMessageId(),
+          id: Date.now().toString(),
           content: '어떤 향수를 찾고 계신가요? 😊',
           sender: 'bot',
           timestamp: new Date(),

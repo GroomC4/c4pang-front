@@ -4,6 +4,13 @@ import React from 'react'
 import { Message } from '@/types/chatbot'
 import { RecommendationView } from './RecommendationView'
 import { FAQView } from './FAQView'
+import { CartView } from './CartView'
+import { ProductListView } from './ProductListView'
+import { CheckoutForm } from './CheckoutForm'
+import { OrderSummary } from './OrderSummary'
+import { OrderConfirmation } from './OrderConfirmation'
+import { QuickActionBar } from './QuickActionBar'
+import { useChatbot } from '@/contexts/ChatbotContext'
 
 interface MessageBubbleProps {
   message: Message
@@ -14,12 +21,31 @@ interface MessageBubbleProps {
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLastMessage, onProductClick, onSearchFAQ }) => {
   const isUser = message.sender === 'user'
+  const { 
+    addProductToCart, 
+    startCheckout, 
+    handleQuickAction, 
+    submitShipping, 
+    submitPayment, 
+    confirmOrder, 
+    cancelCheckout,
+    state 
+  } = useChatbot()
+  
   const formatTime = (timestamp: Date) => {
     return new Intl.DateTimeFormat('ko-KR', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true
     }).format(timestamp)
+  }
+
+  const handleAddToCart = (productId: string) => {
+    addProductToCart(productId, 1)
+  }
+
+  const handleBuyNow = (productId: string) => {
+    startCheckout('direct', productId)
   }
 
   return (
@@ -92,6 +118,84 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLastMessage, o
                 onSearchFAQ={onSearchFAQ}
               />
             </div>
+          )}
+
+          {/* Product View (for cart display) */}
+          {!isUser && message.type === 'product' && message.data?.products && (
+            <div style={{ marginTop: '12px' }}>
+              <CartView 
+                products={message.data.products}
+                quickActions={message.data.quickActions}
+              />
+            </div>
+          )}
+
+          {/* Product List View (for product recommendations with buy now) */}
+          {!isUser && message.data?.products && message.type !== 'product' && message.type !== 'recommendation' && (
+            <div style={{ marginTop: '12px' }}>
+              <ProductListView 
+                products={message.data.products}
+                quickActions={message.data.quickActions}
+              />
+            </div>
+          )}
+
+          {/* Checkout Form */}
+          {!isUser && message.type === 'checkout' && message.data?.checkoutForm && state.checkoutState && (
+            <div style={{ marginTop: '12px' }}>
+              {state.checkoutState.step === 'shipping' && (
+                <CheckoutForm
+                  step="shipping"
+                  onSubmit={(data) => submitShipping(data as any)}
+                  onCancel={cancelCheckout}
+                  initialData={state.checkoutState.shippingInfo}
+                />
+              )}
+              {state.checkoutState.step === 'payment' && (
+                <CheckoutForm
+                  step="payment"
+                  onSubmit={(data) => submitPayment(data as any)}
+                  onCancel={cancelCheckout}
+                  initialData={state.checkoutState.paymentMethod}
+                />
+              )}
+              {state.checkoutState.step === 'confirmation' && (
+                <OrderSummary
+                  checkoutState={state.checkoutState}
+                  onConfirm={confirmOrder}
+                  onCancel={cancelCheckout}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Order Confirmation */}
+          {!isUser && message.type === 'order' && message.data?.orderConfirmation && (
+            <div style={{ marginTop: '12px' }}>
+              <OrderConfirmation
+                order={message.data.orderConfirmation}
+                onViewOrder={(orderId) => {
+                  // Navigate to order detail page
+                  window.location.href = `/orders/${orderId}`
+                }}
+                onContinueShopping={() => {
+                  handleQuickAction({
+                    id: 'continue_shopping',
+                    label: '쇼핑 계속하기',
+                    type: 'secondary',
+                    payload: { action: 'continue_shopping' }
+                  })
+                }}
+              />
+            </div>
+          )}
+
+          {/* Quick Actions (for non-product messages) */}
+          {!isUser && message.data?.quickActions && message.type !== 'product' && message.type !== 'checkout' && message.type !== 'order' && (
+            <QuickActionBar
+              actions={message.data.quickActions}
+              onActionClick={handleQuickAction}
+            />
           )}
           
           {/* Timestamp */}

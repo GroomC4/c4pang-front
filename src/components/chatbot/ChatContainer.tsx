@@ -90,7 +90,11 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ isOpen, onClose }) => {
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
-              onClick={clearMessages}
+              onClick={() => {
+                if (window.confirm('대화 내역을 모두 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+                  clearMessages()
+                }
+              }}
               style={{
                 padding: '8px',
                 backgroundColor: 'rgba(255, 255, 255, 0.2)',
