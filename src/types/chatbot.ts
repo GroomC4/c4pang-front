@@ -6,15 +6,17 @@ export interface Message {
   content: string
   sender: 'user' | 'bot'
   timestamp: Date
-  type?: 'text' | 'product' | 'action' | 'recommendation' | 'faq' | 'checkout' | 'order'
+  type?: 'text' | 'recommendation' | 'cart' | 'checkout' | 'confirmation' | 'error' | 'product' | 'action' | 'order'
   data?: {
+    products?: ProductRecommendation[]
     recommendations?: any[]
     faqs?: any[]
-    products?: ProductRecommendation[]
     actions?: string[]
-    checkoutForm?: CheckoutFormData
-    orderConfirmation?: OrderInfo
     quickActions?: QuickActionItem[]
+    cartSummary?: any
+    checkoutForm?: CheckoutFormData | any
+    paymentMethods?: PaymentMethod[]
+    orderConfirmation?: OrderInfo
   }
 }
 
@@ -25,31 +27,33 @@ export interface ProductRecommendation {
   price: number
   image: string
   description: string
-  fragrance: string[]
+  concentration?: string
+  mainAccords?: string
   notes?: {
     top: string[]
     middle: string[]
     base: string[]
   }
-  season?: string
-  occasion?: string
+  detailUrl?: string
+  similarityScore?: number
+  quickActions?: QuickActionItem[]
 }
 
 export interface ShippingInfo {
   recipientName: string
   phone: string
   address: string
-  addressDetail: string
+  addressDetail?: string
   postalCode: string
-  deliveryRequest?: string
+  deliveryMessage?: string
 }
 
 export interface PaymentMethod {
-  type: 'card' | 'bank' | 'simple'
-  provider?: string
-  cardNumber?: string
-  expiryDate?: string
-  cvc?: string
+  methodId: string
+  methodType: 'credit_card' | 'bank_transfer' | 'kakaopay' | 'naverpay' | 'tosspay'
+  displayName: string
+  icon?: string
+  isAvailable?: boolean
 }
 
 export interface CheckoutState {
@@ -90,8 +94,7 @@ export interface QuickActionItem {
   id: string
   label: string
   icon?: string
-  type: 'primary' | 'secondary' | 'danger'
-  disabled?: boolean
+  actionType: 'add_to_cart' | 'buy_now' | 'show_detail' | 'next_page' | 'previous_page' | 'view_cart' | 'checkout' | 'custom'
   payload?: any
 }
 
@@ -146,4 +149,95 @@ export interface ErrorResponse {
   code: string
   retryable: boolean
   fallbackAction?: QuickActionItem
+}
+
+// Backend API Types (snake_case from Python)
+export interface BackendQuickAction {
+  id: string
+  label: string
+  icon?: string
+  action_type: 'add_to_cart' | 'buy_now' | 'show_detail' | 'next_page' | 'previous_page' | 'view_cart' | 'checkout' | 'custom'
+  payload?: any
+}
+
+export interface BackendProductCard {
+  id: string
+  brand: string
+  name: string
+  image_url?: string
+  price?: number
+  concentration?: string
+  main_accords?: string
+  top_notes?: string
+  middle_notes?: string
+  base_notes?: string
+  description?: string
+  detail_url?: string
+  similarity_score?: number
+  quick_actions?: BackendQuickAction[]
+}
+
+export interface BackendCartItem {
+  product_id: string
+  brand: string
+  name: string
+  price: number
+  quantity: number
+  image_url?: string
+  concentration?: string
+}
+
+export interface BackendCheckoutForm {
+  recipient_name: string
+  phone: string
+  address: string
+  address_detail?: string
+  postal_code: string
+  delivery_message?: string
+}
+
+export interface BackendPaymentMethod {
+  method_id: string
+  method_type: 'credit_card' | 'bank_transfer' | 'kakaopay' | 'naverpay' | 'tosspay'
+  display_name: string
+  icon?: string
+  is_available?: boolean
+}
+
+export interface BackendOrderConfirmation {
+  order_id: string
+  order_date: string
+  total_amount: number
+  items: BackendCartItem[]
+  shipping_info: BackendCheckoutForm
+  payment_method: string
+  estimated_delivery: string
+  status: string
+}
+
+export interface BackendBotResponse {
+  message: string
+  product_cards?: BackendProductCard[]
+  quick_actions?: BackendQuickAction[]
+  cart_summary?: any
+  checkout_form?: BackendCheckoutForm
+  payment_methods?: BackendPaymentMethod[]
+  order_confirmation?: BackendOrderConfirmation
+  response_type: 'text' | 'recommendation' | 'cart' | 'checkout' | 'confirmation' | 'error'
+  is_typing?: boolean
+}
+
+export interface BackendUserMessage {
+  user_id: string
+  session_id: string
+  message: string
+  action_type?: string
+  action_payload?: any
+}
+
+export interface BackendActionRequest {
+  user_id: string
+  session_id: string
+  action_type: string
+  payload: any
 }

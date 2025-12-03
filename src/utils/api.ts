@@ -9,6 +9,15 @@ export const api = axios.create({
   },
 })
 
+// 챗봇 API 전용 클라이언트
+export const chatbotApi = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_CHATBOT_URL || 'http://localhost:8000',
+  timeout: 30000, // 챗봇은 응답 시간이 더 길 수 있음
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
+
 // 요청 인터셉터
 api.interceptors.request.use(
   (config) => {

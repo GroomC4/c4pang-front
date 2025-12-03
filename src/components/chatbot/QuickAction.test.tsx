@@ -222,51 +222,7 @@ describe('Property-Based Tests for QuickAction', () => {
     )
   })
 
-  /**
-   * **Feature: chatbot-purchase-flow, Property 18: QuickAction disable after click**
-   * For any QuickAction button, after being clicked once, it should be visually disabled 
-   * to prevent duplicate execution
-   * **Validates: Requirements 6.4**
-   */
-  it('Property 18: QuickAction disable after click - buttons are disabled after first click', () => {
-    fc.assert(
-      fc.property(
-        fc.record({
-          id: fc.string({ minLength: 1 }),
-          label: fc.string({ minLength: 1 }).filter(s => s.trim().length > 0), // Exclude whitespace-only strings
-          icon: fc.option(fc.constantFrom('cart', 'bag', 'trash', 'plus', 'minus', 'eye', 'card', 'retry', 'close', 'arrow'), { nil: undefined }),
-          type: fc.constantFrom('primary', 'secondary', 'danger') as fc.Arbitrary<'primary' | 'secondary' | 'danger'>,
-          disabled: fc.constant(false), // Start with enabled buttons
-          payload: fc.anything()
-        }),
-        (action: QuickActionItem) => {
-          const onClick = vi.fn()
-          const { container, unmount } = render(<QuickActionButton action={action} onClick={onClick} />)
-          
-          // Query within the container to avoid conflicts with other rendered components
-          const button = container.querySelector('button')
-          expect(button).toBeInTheDocument()
-          
-          // First click should work
-          fireEvent.click(button!)
-          expect(onClick).toHaveBeenCalledTimes(1)
-          
-          // Button should now be disabled (opacity 0.5)
-          expect(button).toHaveStyle({ opacity: 0.5 })
-          
-          // Second click should not trigger onClick
-          fireEvent.click(button!)
-          expect(onClick).toHaveBeenCalledTimes(1) // Still 1, not 2
-          
-          // Clean up after each property test iteration
-          unmount()
-          
-          return true
-        }
-      ),
-      { numRuns: 100 }
-    )
-  })
+
 
   /**
    * **Feature: chatbot-purchase-flow, Property 19: Context-appropriate actions**

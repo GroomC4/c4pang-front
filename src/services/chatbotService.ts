@@ -1,5 +1,16 @@
-import { api } from '@/utils/api'
-import { Message, ProductRecommendation } from '@/types/chatbot'
+import { chatbotApi } from '@/utils/api'
+import { 
+  Message, 
+  ProductRecommendation, 
+  BackendBotResponse,
+  BackendUserMessage 
+} from '@/types/chatbot'
+import { 
+  convertBotResponseToMessage,
+  convertToBackendUserMessage,
+  convertProductCard,
+  convertQuickAction
+} from '@/utils/typeConverters'
 import { getPersonalizedRecommendations, searchFAQs, getFAQs } from './recommendationService'
 import { UserPreferences } from '@/types/recommendation'
 
@@ -12,7 +23,9 @@ export interface ChatResponse {
   recommendations?: any[]
   faqs?: any[]
   actions?: string[]
+  quickActions?: any[]
   error?: string
+  backendResponse?: BackendBotResponse
 }
 
 // 채팅 요청 인터페이스
@@ -30,6 +43,9 @@ export interface ChatRequest {
 export class ChatbotService {
   private static instance: ChatbotService
   private sessionId: string | null = null
+  private userId: string = 'guest'
+  private maxRetries: number = 2
+  private retryDelay: number = 1000
 
   public static getInstance(): ChatbotService {
     if (!ChatbotService.instance) {
@@ -43,29 +59,229 @@ export class ChatbotService {
     this.sessionId = sessionId
   }
 
+  // 사용자 ID 설정
+  public setUserId(userId: string): void {
+    this.userId = userId || 'guest'
+  }
+
+  // 세션 ID 가져오기 (없으면 생성)
+  private getOrCreateSessionId(): string {
+    if (!this.sessionId) {
+      this.sessionId = this.generateSessionId()
+    }
+    return this.sessionId
+  }
+
   // 메시지 전송 및 응답 받기
   public async sendMessage(request: ChatRequest): Promise<ChatResponse> {
+    const sessionId = request.sessionId || this.getOrCreateSessionId()
+    const userId = request.userId || this.userId
+
+    // 백엔드 형식으로 요청 데이터 변환
+    const backendRequest: BackendUserMessage = convertToBackendUserMessage(
+      userId,
+      sessionId,
+      request.message
+    )
+
     try {
-      const requestData = {
-        ...request,
-        sessionId: this.sessionId || this.generateSessionId(),
-        timestamp: new Date().toISOString()
-      }
-
-      const response = await api.post<ChatResponse>('/chatbot/message', requestData)
+      // 백엔드 API 호출
+      const response = await this.sendMessageWithRetry(backendRequest)
       
-      // 세션 ID가 없다면 생성된 세션 ID 저장
-      if (!this.sessionId && response.data.success) {
-        this.sessionId = requestData.sessionId
+      // 세션 ID 저장
+      if (!this.sessionId) {
+        this.sessionId = sessionId
       }
 
-      return response.data
+      // 백엔드 응답을 프론트엔드 형식으로 변환
+      return this.convertBackendResponseToFrontend(response)
     } catch (error) {
       console.error('Chatbot API Error:', error)
       
-      // API 오류 시 폴백 응답
-      return await this.getFallbackResponse(request.message)
+      // 네트워크 오류 처리 및 폴백
+      return await this.handleNetworkError(request.message, error)
     }
+  }
+
+  // 재시도 로직이 포함된 메시지 전송
+  private async sendMessageWithRetry(
+    backendRequest: BackendUserMessage,
+    retryCount: number = 0
+  ): Promise<BackendBotResponse> {
+    try {
+      const response = await chatbotApi.post<BackendBotResponse>(
+        '/api/v1/chatbot/message',
+        backendRequest
+      )
+      return response.data
+    } catch (error: any) {
+      // 네트워크 오류이고 재시도 가능한 경우
+      if (this.isRetryableError(error) && retryCount < this.maxRetries) {
+        console.log(`Retrying request (${retryCount + 1}/${this.maxRetries})...`)
+        await this.delay(this.retryDelay * (retryCount + 1))
+        return this.sendMessageWithRetry(backendRequest, retryCount + 1)
+      }
+      throw error
+    }
+  }
+
+  // 백엔드 응답을 프론트엔드 형식으로 변환
+  private convertBackendResponseToFrontend(backendResponse: BackendBotResponse): ChatResponse {
+    return {
+      success: true,
+      message: backendResponse.message,
+      type: this.mapResponseType(backendResponse.response_type),
+      products: backendResponse.product_cards?.map(convertProductCard),
+      quickActions: backendResponse.quick_actions?.map(convertQuickAction),
+      backendResponse
+    }
+  }
+
+  // 응답 타입 매핑
+  private mapResponseType(
+    backendType: 'text' | 'recommendation' | 'cart' | 'checkout' | 'confirmation' | 'error'
+  ): 'text' | 'product' | 'action' | 'recommendation' | 'faq' {
+    switch (backendType) {
+      case 'recommendation':
+        return 'recommendation'
+      case 'cart':
+      case 'checkout':
+      case 'confirmation':
+        return 'action'
+      case 'error':
+        return 'text'
+      default:
+        return 'text'
+    }
+  }
+
+  // 재시도 가능한 오류인지 확인
+  private isRetryableError(error: any): boolean {
+    // 네트워크 오류
+    if (!error.response) {
+      return true
+    }
+    
+    // 5xx 서버 오류
+    if (error.response?.status >= 500) {
+      return true
+    }
+    
+    // 타임아웃
+    if (error.code === 'ECONNABORTED') {
+      return true
+    }
+    
+    return false
+  }
+
+  // 네트워크 오류 처리
+  private async handleNetworkError(message: string, error: any): Promise<ChatResponse> {
+    const errorType = this.getErrorType(error)
+    
+    console.error(`Network error (${errorType}):`, error.message || error)
+    
+    // 모든 네트워크 오류에 대해 폴백 시도
+    try {
+      const fallbackResponse = await this.getFallbackResponse(message)
+      return {
+        ...fallbackResponse,
+        error: errorType,
+        quickActions: [
+          {
+            id: 'retry',
+            label: '🔄 다시 시도',
+            actionType: 'custom',
+            payload: { action: 'retry_message', content: message }
+          }
+        ]
+      }
+    } catch (fallbackError) {
+      // 폴백도 실패한 경우 에러 메시지 반환
+      console.error('Fallback also failed:', fallbackError)
+      return {
+        success: false,
+        message: this.getErrorMessage(errorType),
+        type: 'text',
+        error: errorType,
+        quickActions: [
+          {
+            id: 'retry',
+            label: '🔄 다시 시도',
+            actionType: 'custom',
+            payload: { action: 'retry_message', content: message }
+          },
+          {
+            id: 'help',
+            label: '💬 도움말',
+            actionType: 'custom',
+            payload: { action: 'help' }
+          }
+        ]
+      }
+    }
+  }
+
+  // 오류 타입 판별
+  private getErrorType(error: any): string {
+    // Connection errors
+    if (error.code === 'ECONNREFUSED') {
+      return 'CONNECTION_REFUSED'
+    }
+    if (error.code === 'ENOTFOUND') {
+      return 'DNS_ERROR'
+    }
+    // 타임아웃 체크
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      return 'TIMEOUT'
+    }
+    // No response received (network error)
+    if (!error.response) {
+      return 'NETWORK_ERROR'
+    }
+    // HTTP status codes
+    if (error.response.status === 404) {
+      return 'NOT_FOUND'
+    }
+    if (error.response.status === 400) {
+      return 'VALIDATION_ERROR'
+    }
+    if (error.response.status === 401 || error.response.status === 403) {
+      return 'AUTH_ERROR'
+    }
+    if (error.response.status >= 500) {
+      return 'SERVER_ERROR'
+    }
+    return 'API_ERROR'
+  }
+
+  // 오류 메시지 생성
+  private getErrorMessage(errorType: string): string {
+    switch (errorType) {
+      case 'NETWORK_ERROR':
+        return '🔌 네트워크 연결을 확인해주세요.\n\n인터넷 연결 상태를 확인하거나 잠시 후 다시 시도해주세요.'
+      case 'CONNECTION_REFUSED':
+        return '🔌 서버에 연결할 수 없습니다.\n\n서버가 실행 중인지 확인하거나 잠시 후 다시 시도해주세요.'
+      case 'DNS_ERROR':
+        return '🌐 서버 주소를 찾을 수 없습니다.\n\n인터넷 연결을 확인해주세요.'
+      case 'TIMEOUT':
+        return '⏱️ 요청 시간이 초과되었습니다.\n\n네트워크 상태를 확인하고 다시 시도해주세요.'
+      case 'SERVER_ERROR':
+        return '🔧 서버에 일시적인 문제가 발생했습니다.\n\n잠시 후 다시 시도해주세요.'
+      case 'NOT_FOUND':
+        return '😕 요청하신 정보를 찾을 수 없습니다.\n\n다른 검색어로 시도해보세요.'
+      case 'VALIDATION_ERROR':
+        return '⚠️ 요청이 올바르지 않습니다.\n\n입력 내용을 확인하고 다시 시도해주세요.'
+      case 'AUTH_ERROR':
+        return '🔐 인증이 필요합니다.\n\n로그인 후 다시 시도해주세요.'
+      default:
+        return '💫 일시적인 오류가 발생했습니다.\n\n잠시 후 다시 시도해주세요.'
+    }
+  }
+
+  // 지연 함수
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms))
   }
 
   // 향수 추천 요청
@@ -75,18 +291,29 @@ export class ChatbotService {
     brand?: string
     occasion?: string
   }): Promise<ChatResponse> {
-    try {
-      // 기존 API 호출 시도
-      const response = await api.post<ChatResponse>('/chatbot/recommendations', {
-        preferences,
-        sessionId: this.sessionId || this.generateSessionId()
-      })
+    const sessionId = this.getOrCreateSessionId()
+    const userId = this.userId
 
-      return response.data
+    // 선호도를 메시지로 변환
+    const preferenceMessage = this.buildPreferenceMessage(preferences)
+    
+    // 백엔드 형식으로 요청 데이터 변환
+    const backendRequest: BackendUserMessage = convertToBackendUserMessage(
+      userId,
+      sessionId,
+      preferenceMessage
+    )
+
+    try {
+      // 백엔드 API 호출
+      const response = await this.sendMessageWithRetry(backendRequest)
+      
+      // 백엔드 응답을 프론트엔드 형식으로 변환
+      return this.convertBackendResponseToFrontend(response)
     } catch (error) {
       console.error('Recommendation API Error:', error)
       
-      // 새로운 추천 서비스 사용
+      // 폴백: 로컬 추천 서비스 사용
       try {
         const userPreferences: UserPreferences = {
           fragranceTypes: preferences.fragranceType || [],
@@ -117,13 +344,38 @@ export class ChatbotService {
         console.error('Personalized Recommendation Error:', recommendationError)
       }
       
-      return {
-        success: false,
-        message: '죄송합니다. 추천 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.',
-        type: 'text',
-        error: 'API_ERROR'
-      }
+      return await this.handleNetworkError(preferenceMessage, error)
     }
+  }
+
+  // 선호도를 메시지로 변환
+  private buildPreferenceMessage(preferences: {
+    fragranceType?: string[]
+    priceRange?: { min: number; max: number }
+    brand?: string
+    occasion?: string
+  }): string {
+    const parts: string[] = []
+    
+    if (preferences.fragranceType && preferences.fragranceType.length > 0) {
+      parts.push(`${preferences.fragranceType.join(', ')} 계열`)
+    }
+    
+    if (preferences.priceRange) {
+      parts.push(`${preferences.priceRange.min}원~${preferences.priceRange.max}원`)
+    }
+    
+    if (preferences.brand) {
+      parts.push(`${preferences.brand} 브랜드`)
+    }
+    
+    if (preferences.occasion) {
+      parts.push(`${preferences.occasion} 용도`)
+    }
+    
+    return parts.length > 0 
+      ? `${parts.join(', ')} 향수를 추천해주세요`
+      : '향수를 추천해주세요'
   }
 
   // FAQ 검색 요청
@@ -191,9 +443,23 @@ export class ChatbotService {
 
   // 상품 정보 조회
   public async getProductInfo(productId: string): Promise<ChatResponse> {
+    const sessionId = this.getOrCreateSessionId()
+    const userId = this.userId
+
+    // 상품 정보 요청 메시지 생성
+    const message = `상품 ${productId}의 정보를 알려주세요`
+    
+    const backendRequest: BackendUserMessage = convertToBackendUserMessage(
+      userId,
+      sessionId,
+      message,
+      'show_detail',
+      { product_id: productId }
+    )
+
     try {
-      const response = await api.get<ChatResponse>(`/chatbot/product/${productId}`)
-      return response.data
+      const response = await this.sendMessageWithRetry(backendRequest)
+      return this.convertBackendResponseToFrontend(response)
     } catch (error) {
       console.error('Product Info API Error:', error)
       
@@ -208,9 +474,17 @@ export class ChatbotService {
 
   // 세션 초기화
   public async resetSession(): Promise<void> {
+    const sessionId = this.sessionId
+    const userId = this.userId
+
     try {
-      if (this.sessionId) {
-        await api.delete(`/chatbot/session/${this.sessionId}`)
+      if (sessionId) {
+        await chatbotApi.post('/api/v1/chatbot/session/clear', null, {
+          params: {
+            user_id: userId,
+            session_id: sessionId
+          }
+        })
       }
     } catch (error) {
       console.error('Session reset error:', error)

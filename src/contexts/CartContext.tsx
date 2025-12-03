@@ -2,11 +2,15 @@
 
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react'
 import { CartItem, Product } from '@/types'
+import { cartApiService, BackendCartItem } from '@/services/cartApiService'
 
 interface CartState {
   items: CartItem[]
   totalPrice: number
   totalItems: number
+  sessionId: string | null
+  userId: string
+  isSyncing: boolean
 }
 
 type CartAction =
@@ -15,6 +19,9 @@ type CartAction =
   | { type: 'UPDATE_QUANTITY'; payload: { id: string; quantity: number } }
   | { type: 'CLEAR_CART' }
   | { type: 'LOAD_FROM_STORAGE'; payload: CartItem[] }
+  | { type: 'SYNC_FROM_BACKEND'; payload: { items: CartItem[]; totalPrice: number; totalItems: number } }
+  | { type: 'SET_SESSION'; payload: { sessionId: string; userId: string } }
+  | { type: 'SET_SYNCING'; payload: boolean }
 
 interface CartContextType extends CartState {
   addItem: (product: Product) => void
@@ -24,6 +31,8 @@ interface CartContextType extends CartState {
   isCartOpen: boolean
   openCart: () => void
   closeCart: () => void
+  setSession: (sessionId: string, userId: string) => void
+  syncWithBackend: () => Promise<void>
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
@@ -42,7 +51,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
         const totalPrice = updatedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
         const totalItems = updatedItems.reduce((sum, item) => sum + item.quantity, 0)
         
-        return { items: updatedItems, totalPrice, totalItems }
+        return { ...state, items: updatedItems, totalPrice, totalItems }
       }
       
       const newItem: CartItem = { ...action.payload, quantity: 1 }
@@ -50,7 +59,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       const totalPrice = newItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
       const totalItems = newItems.reduce((sum, item) => sum + item.quantity, 0)
       
-      return { items: newItems, totalPrice, totalItems }
+      return { ...state, items: newItems, totalPrice, totalItems }
     }
     
     case 'REMOVE_ITEM': {
@@ -58,7 +67,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       const totalPrice = filteredItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
       const totalItems = filteredItems.reduce((sum, item) => sum + item.quantity, 0)
       
-      return { items: filteredItems, totalPrice, totalItems }
+      return { ...state, items: filteredItems, totalPrice, totalItems }
     }
     
     case 'UPDATE_QUANTITY': {
@@ -74,21 +83,55 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       const totalPrice = updatedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
       const totalItems = updatedItems.reduce((sum, item) => sum + item.quantity, 0)
       
-      return { items: updatedItems, totalPrice, totalItems }
+      return { ...state, items: updatedItems, totalPrice, totalItems }
     }
     
     case 'CLEAR_CART':
-      return { items: [], totalPrice: 0, totalItems: 0 }
+      return { ...state, items: [], totalPrice: 0, totalItems: 0 }
     
     case 'LOAD_FROM_STORAGE': {
       const totalPrice = action.payload.reduce((sum, item) => sum + (item.price * item.quantity), 0)
       const totalItems = action.payload.reduce((sum, item) => sum + item.quantity, 0)
       
-      return { items: action.payload, totalPrice, totalItems }
+      return { ...state, items: action.payload, totalPrice, totalItems }
     }
+    
+    case 'SYNC_FROM_BACKEND':
+      return {
+        ...state,
+        items: action.payload.items,
+        totalPrice: action.payload.totalPrice,
+        totalItems: action.payload.totalItems,
+        isSyncing: false
+      }
+    
+    case 'SET_SESSION':
+      return {
+        ...state,
+        sessionId: action.payload.sessionId,
+        userId: action.payload.userId
+      }
+    
+    case 'SET_SYNCING':
+      return { ...state, isSyncing: action.payload }
     
     default:
       return state
+  }
+}
+
+// Helper function to convert backend cart item to frontend cart item
+const convertBackendCartItem = (backendItem: BackendCartItem): CartItem => {
+  return {
+    id: backendItem.product_id,
+    name: backendItem.name,
+    brand: backendItem.brand,
+    price: backendItem.price,
+    quantity: backendItem.quantity,
+    image: backendItem.image_url || '',
+    description: '',
+    notes: [],
+    category: backendItem.concentration || 'general'
   }
 }
 
@@ -96,7 +139,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, {
     items: [],
     totalPrice: 0,
-    totalItems: 0
+    totalItems: 0,
+    sessionId: null,
+    userId: 'guest',
+    isSyncing: false
   })
 
   const [isCartOpen, setIsCartOpen] = React.useState(false)
@@ -117,20 +163,97 @@ export function CartProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('cart', JSON.stringify(state.items))
   }, [state.items])
 
-  const addItem = (product: Product) => {
+  const setSession = (sessionId: string, userId: string) => {
+    dispatch({ type: 'SET_SESSION', payload: { sessionId, userId } })
+  }
+
+  const syncWithBackend = async () => {
+    if (!state.sessionId || !state.userId) {
+      console.warn('Cannot sync cart: session not initialized')
+      return
+    }
+
+    try {
+      dispatch({ type: 'SET_SYNCING', payload: true })
+      
+      const backendCart = await cartApiService.getCartSummary(state.userId, state.sessionId)
+      
+      // Convert backend items to frontend format
+      const frontendItems = backendCart.items.map(convertBackendCartItem)
+      
+      dispatch({
+        type: 'SYNC_FROM_BACKEND',
+        payload: {
+          items: frontendItems,
+          totalPrice: backendCart.total_amount,
+          totalItems: backendCart.total_items
+        }
+      })
+    } catch (error) {
+      console.error('Failed to sync cart with backend:', error)
+      dispatch({ type: 'SET_SYNCING', payload: false })
+    }
+  }
+
+  const addItem = async (product: Product) => {
+    // Add to local state immediately for responsive UI
     dispatch({ type: 'ADD_ITEM', payload: product })
+
+    // Sync with backend if session is available
+    if (state.sessionId && state.userId) {
+      try {
+        await cartApiService.addToCart(state.userId, state.sessionId, product.id, 1)
+        // Sync to get updated cart state from backend
+        await syncWithBackend()
+      } catch (error) {
+        console.error('Failed to sync add to cart with backend:', error)
+        // Keep local state even if backend fails
+      }
+    }
   }
 
-  const removeItem = (productId: string) => {
+  const removeItem = async (productId: string) => {
+    // Remove from local state immediately
     dispatch({ type: 'REMOVE_ITEM', payload: productId })
+
+    // Sync with backend if session is available
+    if (state.sessionId && state.userId) {
+      try {
+        await cartApiService.removeFromCart(state.userId, state.sessionId, productId)
+        await syncWithBackend()
+      } catch (error) {
+        console.error('Failed to sync remove from cart with backend:', error)
+      }
+    }
   }
 
-  const updateQuantity = (productId: string, quantity: number) => {
+  const updateQuantity = async (productId: string, quantity: number) => {
+    // Update local state immediately
     dispatch({ type: 'UPDATE_QUANTITY', payload: { id: productId, quantity } })
+
+    // Sync with backend if session is available
+    if (state.sessionId && state.userId) {
+      try {
+        await cartApiService.updateQuantity(state.userId, state.sessionId, productId, quantity)
+        await syncWithBackend()
+      } catch (error) {
+        console.error('Failed to sync update quantity with backend:', error)
+      }
+    }
   }
 
-  const clearCart = () => {
+  const clearCart = async () => {
+    // Clear local state immediately
     dispatch({ type: 'CLEAR_CART' })
+
+    // Sync with backend if session is available
+    if (state.sessionId && state.userId) {
+      try {
+        await cartApiService.clearCart(state.userId, state.sessionId)
+      } catch (error) {
+        console.error('Failed to sync clear cart with backend:', error)
+      }
+    }
   }
 
   const openCart = () => setIsCartOpen(true)
@@ -144,7 +267,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     clearCart,
     isCartOpen,
     openCart,
-    closeCart
+    closeCart,
+    setSession,
+    syncWithBackend
   }
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
