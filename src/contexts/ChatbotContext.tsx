@@ -15,7 +15,14 @@ import { sendChatMessage } from '@/services/chatbotService'
 import { sendMockChatMessage } from '@/services/mockChatbotService'
 import { useCart } from './CartContext'
 import { CartItem } from '@/types'
-import { parseError, getErrorActions } from '@/utils/errorHandler'
+import { 
+  parseError, 
+  getErrorActions, 
+  shouldUseFallback, 
+  recordFailure, 
+  resetFailures,
+  getFailureCount 
+} from '@/utils/errorHandler'
 
 const generateSessionId = (): string => {
   return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -32,7 +39,7 @@ const initialState: ChatbotState = {
   messages: [
     {
       id: '1',
-      content: '안녕하세요! C4pang입니다. 🌸\n어떤 향수를 찾고 계신가요? 취향에 맞는 향수를 추천해드릴게요!',
+      content: '안녕하세요! C4ang AI입니다. 🌸\n어떤 향수를 찾고 계신가요? 취향에 맞는 향수를 추천해드릴게요!',
       sender: 'bot',
       timestamp: new Date(),
       type: 'text'
@@ -159,6 +166,24 @@ const ChatbotContext = createContext<ChatbotContextType | null>(null)
 
 export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => {
   const [state, dispatch] = useReducer(chatbotReducer, initialState)
+  const cart = useCart()
+
+  // Initialize cart session when conversation context is loaded
+  useEffect(() => {
+    if (state.conversationContext.sessionId) {
+      const userId = 'guest' // Always use 'guest' for now
+      console.log('🔑 Setting cart session:', state.conversationContext.sessionId, userId)
+      cart.setSession(state.conversationContext.sessionId, userId)
+      
+      // Sync cart with backend after a short delay to ensure session is set
+      setTimeout(() => {
+        cart.syncWithBackend().catch(error => {
+          console.error('Failed to sync cart:', error)
+        })
+      }, 100)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.conversationContext.sessionId])
 
   // Load preferences from sessionStorage on mount
   useEffect(() => {
@@ -228,22 +253,75 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
       // 대기 메시지가 표시되었다면 제거
       clearTimeout(delayTimeout)
 
+      // 백엔드 응답 형식 처리 - response.type을 기반으로 메시지 타입 결정
+      let messageType: Message['type'] = 'text'
+      let messageData: Message['data'] = {}
+
+      // 응답 타입에 따라 메시지 타입과 데이터 설정
+      switch (response.type) {
+        case 'recommendation':
+          messageType = 'recommendation'
+          messageData = {
+            products: response.products,
+            quickActions: response.quickActions
+          }
+          break
+        
+        case 'product':
+          messageType = 'recommendation'
+          messageData = {
+            products: response.products,
+            quickActions: response.quickActions
+          }
+          break
+        
+        case 'action':
+        case 'cart':
+          messageType = 'cart'
+          messageData = {
+            quickActions: response.quickActions,
+            cartSummary: response.backendResponse?.cart_summary
+          }
+          // 장바구니 액션인 경우 프론트엔드 장바구니도 동기화
+          if (response.type === 'cart') {
+            console.log('🔄 장바구니 동기화 시작')
+            cart.syncWithBackend().catch(error => {
+              console.error('Failed to sync cart after action:', error)
+            })
+          }
+          break
+        
+        case 'faq':
+          messageType = 'text'
+          messageData = {
+            quickActions: response.quickActions
+          }
+          break
+        
+        default:
+          messageType = 'text'
+          messageData = {
+            products: response.products,
+            quickActions: response.quickActions,
+            cartSummary: response.backendResponse?.cart_summary
+          }
+          break
+      }
+
       // API 응답을 메시지로 변환
       const botMessage: Message = {
         id: generateMessageId(),
         content: response.message,
         sender: 'bot',
         timestamp: new Date(),
-        type: response.type || 'text',
-        data: {
-          recommendations: response.recommendations,
-          faqs: response.faqs,
-          products: response.products,
-          actions: response.actions
-        }
+        type: messageType,
+        data: messageData
       }
       
       dispatch({ type: 'ADD_MESSAGE', payload: botMessage })
+      
+      // Reset failure counter on success
+      resetFailures()
       
     } catch (error: any) {
       console.error('Failed to send message:', error)
@@ -251,11 +329,14 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
       // 대기 메시지 타이머 정리
       clearTimeout(delayTimeout)
       
+      // Record failure for consecutive failure tracking
+      const shouldSuggestNetworkCheck = recordFailure()
+      
       // Parse error using error handler utility
       const errorResponse = parseError(error)
       
       // Try fallback to mock data for network errors
-      if (errorResponse.type === 'network') {
+      if (shouldUseFallback(error)) {
         try {
           console.log('Attempting fallback to mock data...')
           const mockResponse = await sendMockChatMessage(content, {
@@ -271,7 +352,15 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
             type: mockResponse.type || 'text',
             data: {
               products: mockResponse.products,
-              recommendations: mockResponse.recommendations
+              recommendations: mockResponse.recommendations,
+              quickActions: [
+                {
+                  id: 'retry_connection',
+                  label: '🔄 다시 연결 시도',
+                  actionType: 'custom',
+                  payload: { action: 'retry_message', content }
+                }
+              ]
             }
           }
           
@@ -285,10 +374,16 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
       // Get appropriate quick actions
       const quickActions = getErrorActions(errorResponse, { action: 'retry_message', content })
       
+      // Add network check suggestion if multiple consecutive failures
+      let errorContent = errorResponse.message
+      if (shouldSuggestNetworkCheck) {
+        errorContent += '\n\n⚠️ 여러 번 연속으로 오류가 발생했습니다.\n네트워크 연결 상태를 확인해주세요.'
+      }
+      
       // 오류 메시지
       const errorMessage: Message = {
         id: generateMessageId(),
-        content: errorResponse.message,
+        content: errorContent,
         sender: 'bot',
         timestamp: new Date(),
         type: 'text',
@@ -304,12 +399,12 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
     }
   }, [state.messages, state.conversationContext])
 
-  const cart = useCart()
-
   const addProductToCart = useCallback(async (productId: string, quantity: number = 1) => {
+    console.log('🛒 Adding to cart:', productId, 'quantity:', quantity)
     try {
       // Check if product already exists in cart
       const existingItem = cart.items.find(item => item.id === productId)
+      console.log('Existing item:', existingItem)
       
       if (existingItem) {
         // Product already in cart - show confirmation message
@@ -324,13 +419,13 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
               {
                 id: `increase_${productId}`,
                 label: '수량 증가',
-                type: 'primary',
+                actionType: 'custom',
                 payload: { action: 'increase', productId, currentQuantity: existingItem.quantity }
               },
               {
                 id: `cancel_${productId}`,
                 label: '취소',
-                type: 'secondary'
+                actionType: 'custom'
               }
             ]
           }
@@ -341,16 +436,22 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
 
       // Fetch product details from the messages to get full product info
       // Look for the product in recent messages
+      console.log('🔍 Searching for product:', productId, 'in', state.messages.length, 'messages')
       let productInfo = null
       for (const message of state.messages) {
         if (message.data?.products) {
+          console.log('  Found message with', message.data.products.length, 'products')
           productInfo = message.data.products.find((p: any) => p.id === productId)
-          if (productInfo) break
+          if (productInfo) {
+            console.log('  ✅ Found product:', productInfo.name)
+            break
+          }
         }
       }
 
       if (!productInfo) {
         // If product not found in messages, show error
+        console.error('❌ Product not found:', productId)
         const errorMessage: Message = {
           id: generateMessageId(),
           content: '상품 정보를 찾을 수 없습니다. 다시 시도해주세요.',
@@ -369,13 +470,14 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
         brand: productInfo.brand,
         price: productInfo.price,
         description: productInfo.description,
-        notes: productInfo.fragrance || [],
+        notes: productInfo.notes?.top || [],
         image: productInfo.image,
-        category: productInfo.occasion || 'general'
+        category: productInfo.concentration || 'general'
       }
 
-      // Add to cart
-      cart.addItem(productForCart)
+      // Add to cart (this will sync with backend automatically)
+      await cart.addItem(productForCart)
+      console.log('✅ Cart updated, items:', cart.items.length, 'totalItems:', cart.totalItems)
 
       // Update conversation context
       dispatch({
@@ -388,10 +490,10 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
         }
       })
 
-      // Show success message with cart status
+      // Show success message with updated cart status from backend
       const successMessage: Message = {
         id: generateMessageId(),
-        content: `✅ ${productInfo.name}이(가) 장바구니에 추가되었습니다!\n\n현재 장바구니: ${cart.totalItems + 1}개 상품, 총 ${(cart.totalPrice + productInfo.price).toLocaleString()}원`,
+        content: `✅ ${productInfo.name}이(가) 장바구니에 추가되었습니다!\n\n현재 장바구니: ${cart.totalItems}개 상품, 총 ${cart.totalPrice.toLocaleString()}원`,
         sender: 'bot',
         timestamp: new Date(),
         type: 'text',
@@ -400,13 +502,13 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
             {
               id: 'view_cart',
               label: '장바구니 보기',
-              type: 'primary',
+              actionType: 'view_cart',
               payload: { action: 'view_cart' }
             },
             {
               id: 'continue_shopping',
               label: '쇼핑 계속하기',
-              type: 'secondary'
+              actionType: 'custom'
             }
           ]
         }
@@ -425,26 +527,166 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
       }
       dispatch({ type: 'ADD_MESSAGE', payload: errorMessage })
     }
-  }, [cart, state.messages, state.conversationContext, dispatch])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.messages, state.conversationContext, dispatch])
 
-  const startCheckout = useCallback((mode: 'cart' | 'direct', productId?: string) => {
-    // Get items based on mode
-    let items: CartItem[] = []
-    
-    if (mode === 'direct' && productId) {
-      // For direct purchase, find the product in recent messages
-      let productInfo = null
-      for (const message of state.messages) {
-        if (message.data?.products) {
-          productInfo = message.data.products.find((p: any) => p.id === productId)
-          if (productInfo) break
+  const startCheckout = useCallback(async (mode: 'cart' | 'direct', productId?: string) => {
+    dispatch({ type: 'SET_LOADING', payload: true })
+
+    try {
+      const userId = state.conversationContext.userId || 'guest'
+      const sessionId = state.conversationContext.sessionId
+
+      // Get items based on mode
+      let items: CartItem[] = []
+      
+      if (mode === 'direct' && productId) {
+        // For direct purchase, find the product in recent messages
+        let productInfo = null
+        for (const message of state.messages) {
+          if (message.data?.products) {
+            productInfo = message.data.products.find((p: any) => p.id === productId)
+            if (productInfo) break
+          }
+        }
+
+        if (!productInfo) {
+          const errorMessage: Message = {
+            id: generateMessageId(),
+            content: '상품 정보를 찾을 수 없습니다. 다시 시도해주세요.',
+            sender: 'bot',
+            timestamp: new Date(),
+            type: 'text'
+          }
+          dispatch({ type: 'ADD_MESSAGE', payload: errorMessage })
+          return
+        }
+
+        // Create temporary cart item for direct purchase
+        items = [{
+          id: productInfo.id,
+          name: productInfo.name,
+          brand: productInfo.brand,
+          price: productInfo.price,
+          description: productInfo.description,
+          notes: productInfo.notes?.top || [],
+          image: productInfo.image,
+          category: productInfo.concentration || 'general',
+          quantity: 1
+        }]
+      } else {
+        // For cart mode, get items from CartContext
+        if (cart.items.length === 0) {
+          const emptyMessage: Message = {
+            id: generateMessageId(),
+            content: '장바구니가 비어있습니다. 😊\n상품을 먼저 담아주세요.',
+            sender: 'bot',
+            timestamp: new Date(),
+            type: 'text'
+          }
+          dispatch({ type: 'ADD_MESSAGE', payload: emptyMessage })
+          return
+        }
+        items = cart.items
+      }
+
+      // Call backend checkout action to get payment methods and cart summary
+      const response = await fetch('/api/v1/chatbot/action', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          session_id: sessionId,
+          action_type: 'checkout',
+          payload: {}
+        })
+      })
+
+      let paymentMethods: PaymentMethod[] = []
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.payment_methods) {
+          // Convert backend format to frontend format
+          paymentMethods = data.payment_methods.map((m: any) => ({
+            methodId: m.method_id,
+            methodType: m.method_type,
+            displayName: m.display_name,
+            icon: m.icon,
+            isAvailable: m.is_available
+          }))
+        }
+      } else {
+        // Fallback: try direct payment methods endpoint
+        const fallbackResponse = await fetch('/api/v1/chatbot/payment-methods', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+
+        if (fallbackResponse.ok) {
+          const data = await fallbackResponse.json()
+          if (data.success && data.methods) {
+            paymentMethods = data.methods.map((m: any) => ({
+              methodId: m.method_id,
+              methodType: m.method_type,
+              displayName: m.display_name,
+              icon: m.icon,
+              isAvailable: m.is_available
+            }))
+          }
         }
       }
 
-      if (!productInfo) {
+      dispatch({ 
+        type: 'START_CHECKOUT', 
+        payload: { mode, items } 
+      })
+
+      // Add checkout start message with payment methods
+      const checkoutMessage: Message = {
+        id: generateMessageId(),
+        content: '결제를 시작합니다. 배송지 정보를 입력해주세요.',
+        sender: 'bot',
+        timestamp: new Date(),
+        type: 'checkout',
+        data: {
+          checkoutForm: {
+            step: 'shipping'
+          },
+          paymentMethods: paymentMethods.length > 0 ? paymentMethods : undefined
+        }
+      }
+      dispatch({ type: 'ADD_MESSAGE', payload: checkoutMessage })
+
+    } catch (error) {
+      console.error('Failed to start checkout:', error)
+      
+      const errorMessage: Message = {
+        id: generateMessageId(),
+        content: '결제를 시작하는 중 오류가 발생했습니다. 다시 시도해주세요.',
+        sender: 'bot',
+        timestamp: new Date(),
+        type: 'text'
+      }
+      dispatch({ type: 'ADD_MESSAGE', payload: errorMessage })
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.messages, state.conversationContext, dispatch])
+
+  const submitShipping = useCallback(async (info: ShippingInfo) => {
+    dispatch({ type: 'SET_LOADING', payload: true })
+
+    try {
+      // Validate shipping info locally first
+      if (!info.recipientName || !info.phone || !info.address || !info.postalCode) {
         const errorMessage: Message = {
           id: generateMessageId(),
-          content: '상품 정보를 찾을 수 없습니다. 다시 시도해주세요.',
+          content: '배송지 정보를 모두 입력해주세요.',
           sender: 'bot',
           timestamp: new Date(),
           type: 'text'
@@ -453,92 +695,117 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
         return
       }
 
-      // Create temporary cart item for direct purchase
-      items = [{
-        id: productInfo.id,
-        name: productInfo.name,
-        brand: productInfo.brand,
-        price: productInfo.price,
-        description: productInfo.description,
-        notes: productInfo.fragrance || [],
-        image: productInfo.image,
-        category: productInfo.occasion || 'general',
-        quantity: 1
-      }]
-    } else {
-      // For cart mode, get items from CartContext
-      if (cart.items.length === 0) {
-        const emptyMessage: Message = {
+      // Basic phone number validation
+      const phoneRegex = /^[0-9-]+$/
+      if (!phoneRegex.test(info.phone)) {
+        const errorMessage: Message = {
           id: generateMessageId(),
-          content: '장바구니가 비어있습니다. 😊\n상품을 먼저 담아주세요.',
+          content: '올바른 전화번호 형식을 입력해주세요.',
           sender: 'bot',
           timestamp: new Date(),
           type: 'text'
         }
-        dispatch({ type: 'ADD_MESSAGE', payload: emptyMessage })
+        dispatch({ type: 'ADD_MESSAGE', payload: errorMessage })
         return
       }
-      items = cart.items
-    }
 
-    dispatch({ 
-      type: 'START_CHECKOUT', 
-      payload: { mode, items } 
-    })
+      // Update state with shipping info (backend validation happens at order creation)
+      dispatch({ type: 'SET_SHIPPING_INFO', payload: info })
 
-    // Add checkout start message
-    const checkoutMessage: Message = {
-      id: generateMessageId(),
-      content: '결제를 시작합니다. 배송지 정보를 입력해주세요.',
-      sender: 'bot',
-      timestamp: new Date(),
-      type: 'checkout',
-      data: {
-        checkoutForm: {
-          step: 'shipping'
+      // Add payment selection message
+      const paymentMessage: Message = {
+        id: generateMessageId(),
+        content: '배송지 정보가 저장되었습니다. 결제 수단을 선택해주세요.',
+        sender: 'bot',
+        timestamp: new Date(),
+        type: 'checkout',
+        data: {
+          checkoutForm: {
+            step: 'payment'
+          }
         }
       }
-    }
-    dispatch({ type: 'ADD_MESSAGE', payload: checkoutMessage })
-  }, [cart, state.messages, dispatch])
+      dispatch({ type: 'ADD_MESSAGE', payload: paymentMessage })
 
-  const submitShipping = useCallback((info: ShippingInfo) => {
-    dispatch({ type: 'SET_SHIPPING_INFO', payload: info })
-
-    // Add payment selection message
-    const paymentMessage: Message = {
-      id: generateMessageId(),
-      content: '배송지 정보가 저장되었습니다. 결제 수단을 선택해주세요.',
-      sender: 'bot',
-      timestamp: new Date(),
-      type: 'checkout',
-      data: {
-        checkoutForm: {
-          step: 'payment'
-        }
+    } catch (error) {
+      console.error('Failed to submit shipping info:', error)
+      
+      const errorMessage: Message = {
+        id: generateMessageId(),
+        content: '배송지 정보 처리 중 오류가 발생했습니다. 다시 시도해주세요.',
+        sender: 'bot',
+        timestamp: new Date(),
+        type: 'text'
       }
+      dispatch({ type: 'ADD_MESSAGE', payload: errorMessage })
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false })
     }
-    dispatch({ type: 'ADD_MESSAGE', payload: paymentMessage })
-  }, [])
+  }, [dispatch])
 
   const submitPayment = useCallback(async (method: PaymentMethod) => {
-    dispatch({ type: 'SET_PAYMENT_METHOD', payload: method })
+    dispatch({ type: 'SET_LOADING', payload: true })
 
-    // Show confirmation step with order summary
-    const confirmMessage: Message = {
-      id: generateMessageId(),
-      content: '결제 수단이 선택되었습니다. 주문을 확인해주세요.',
-      sender: 'bot',
-      timestamp: new Date(),
-      type: 'checkout',
-      data: {
-        checkoutForm: {
-          step: 'payment'
+    try {
+      // Validate payment method
+      if (!method.methodId || !method.methodType) {
+        const errorMessage: Message = {
+          id: generateMessageId(),
+          content: '결제 수단을 선택해주세요.',
+          sender: 'bot',
+          timestamp: new Date(),
+          type: 'text'
+        }
+        dispatch({ type: 'ADD_MESSAGE', payload: errorMessage })
+        return
+      }
+
+      // Check if payment method is available
+      if (!method.isAvailable) {
+        const errorMessage: Message = {
+          id: generateMessageId(),
+          content: '선택하신 결제 수단은 현재 사용할 수 없습니다. 다른 결제 수단을 선택해주세요.',
+          sender: 'bot',
+          timestamp: new Date(),
+          type: 'text'
+        }
+        dispatch({ type: 'ADD_MESSAGE', payload: errorMessage })
+        return
+      }
+
+      // Update state with payment method (backend processes payment at order creation)
+      dispatch({ type: 'SET_PAYMENT_METHOD', payload: method })
+
+      // Show confirmation step with order summary
+      const confirmMessage: Message = {
+        id: generateMessageId(),
+        content: `결제 수단이 선택되었습니다. (${method.displayName})\n주문 내용을 확인하고 결제를 완료해주세요.`,
+        sender: 'bot',
+        timestamp: new Date(),
+        type: 'checkout',
+        data: {
+          checkoutForm: {
+            step: 'confirmation'
+          }
         }
       }
+      dispatch({ type: 'ADD_MESSAGE', payload: confirmMessage })
+
+    } catch (error) {
+      console.error('Failed to submit payment method:', error)
+      
+      const errorMessage: Message = {
+        id: generateMessageId(),
+        content: '결제 수단 선택 중 오류가 발생했습니다. 다시 시도해주세요.',
+        sender: 'bot',
+        timestamp: new Date(),
+        type: 'text'
+      }
+      dispatch({ type: 'ADD_MESSAGE', payload: errorMessage })
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false })
     }
-    dispatch({ type: 'ADD_MESSAGE', payload: confirmMessage })
-  }, [])
+  }, [dispatch])
 
   const confirmOrder = useCallback(async () => {
     if (!state.checkoutState || !state.checkoutState.shippingInfo || !state.checkoutState.paymentMethod) {
@@ -556,29 +823,59 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
     dispatch({ type: 'SET_LOADING', payload: true })
 
     try {
-      // Import order service dynamically to avoid circular dependencies
-      const { orderService } = await import('@/services/order')
-      
+      const userId = state.conversationContext.userId || 'guest'
+      const sessionId = state.conversationContext.sessionId
+
+      // Prepare checkout form in backend format
+      const checkoutForm = {
+        recipient_name: state.checkoutState.shippingInfo.recipientName,
+        phone: state.checkoutState.shippingInfo.phone,
+        address: state.checkoutState.shippingInfo.address,
+        address_detail: state.checkoutState.shippingInfo.addressDetail || '',
+        postal_code: state.checkoutState.shippingInfo.postalCode,
+        delivery_message: state.checkoutState.shippingInfo.deliveryMessage || ''
+      }
+
       // Map payment method type to backend format
-      const paymentMethodMap: Record<string, 'CARD' | 'CASH' | 'TRANSFER'> = {
-        'card': 'CARD',
-        'bank': 'TRANSFER',
-        'simple': 'CARD'
+      const paymentMethodMap: Record<string, string> = {
+        'credit_card': 'credit_card',
+        'bank_transfer': 'bank_transfer',
+        'kakaopay': 'kakaopay',
+        'naverpay': 'naverpay',
+        'tosspay': 'tosspay'
       }
 
-      // Prepare order request
-      const orderRequest = {
-        shippingAddress: `(${state.checkoutState.shippingInfo.postalCode}) ${state.checkoutState.shippingInfo.address} ${state.checkoutState.shippingInfo.addressDetail}`,
-        phoneNumber: state.checkoutState.shippingInfo.phone,
-        paymentMethod: paymentMethodMap[state.checkoutState.paymentMethod.type] || 'CARD'
+      const paymentMethod = paymentMethodMap[state.checkoutState.paymentMethod.methodType] || 'credit_card'
+
+      // Call backend chatbot order API
+      const response = await fetch('/api/v1/chatbot/order/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          session_id: sessionId,
+          checkout_form: checkoutForm,
+          payment_method: paymentMethod
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.detail || errorData.message || '주문 처리 중 오류가 발생했습니다.')
       }
 
-      // Call backend API to create order
-      const order = await orderService.createOrder(orderRequest)
-      
-      const orderDate = order.orderDate || new Date().toISOString()
-      const estimatedDelivery = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+      const orderData = await response.json()
 
+      if (!orderData.success) {
+        throw new Error(orderData.message || '주문 처리 중 오류가 발생했습니다.')
+      }
+
+      // Extract order confirmation from response
+      const orderConfirmation = orderData.order
+
+      // Convert backend format to frontend format
       const orderMessage: Message = {
         id: generateMessageId(),
         content: '주문이 완료되었습니다! 🎉',
@@ -587,14 +884,14 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
         type: 'order',
         data: {
           orderConfirmation: {
-            orderId: order.orderNumber || order.id,
-            orderDate,
-            estimatedDelivery,
+            orderId: orderConfirmation.order_id,
+            orderDate: orderConfirmation.order_date,
+            estimatedDelivery: orderConfirmation.estimated_delivery,
             items: state.checkoutState.items,
-            totalAmount: order.totalAmount,
+            totalAmount: orderConfirmation.total_amount,
             shippingInfo: state.checkoutState.shippingInfo,
             paymentMethod: state.checkoutState.paymentMethod,
-            status: 'confirmed'
+            status: orderConfirmation.status || 'confirmed'
           }
         }
       }
@@ -602,9 +899,12 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
       dispatch({ type: 'ADD_MESSAGE', payload: orderMessage })
       dispatch({ type: 'COMPLETE_CHECKOUT' })
 
+      // Reset failure counter on successful order
+      resetFailures()
+
       // Clear cart if checkout was from cart mode
       if (state.checkoutState.mode === 'cart') {
-        cart.clearCart()
+        await cart.clearCart()
       }
 
       // Update conversation context with purchase
@@ -614,7 +914,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
           purchaseHistory: [
             ...state.conversationContext.purchaseHistory,
             ...state.checkoutState.items.map((item: CartItem) => ({
-              orderId: order.orderNumber || order.id,
+              orderId: orderConfirmation.order_id,
               productId: item.id,
               purchaseDate: new Date(),
               price: item.price
@@ -626,25 +926,41 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
     } catch (error: any) {
       console.error('Failed to confirm order:', error)
       
+      // Record failure
+      recordFailure()
+      
       // Parse error using error handler utility
       const errorResponse = parseError(error)
+      
+      // IMPORTANT: Cart is preserved automatically - we don't clear it on failure
+      // The cart contents remain intact for retry
       
       // Get appropriate quick actions
       const quickActions = getErrorActions(errorResponse, { action: 'retry_order' })
       
-      // Add back to cart action for non-retryable errors
-      if (!errorResponse.retryable) {
-        quickActions.push({
-          id: 'back_to_cart',
-          label: '장바구니로 돌아가기',
-          type: 'secondary',
-          payload: { action: 'view_cart' }
-        })
-      }
+      // Add back to cart action for all errors
+      quickActions.push({
+        id: 'back_to_cart',
+        label: '🛒 장바구니 확인',
+        actionType: 'view_cart',
+        payload: { action: 'view_cart' }
+      })
+      
+      // Add cancel checkout action
+      quickActions.push({
+        id: 'cancel_checkout',
+        label: '결제 취소',
+        actionType: 'custom',
+        payload: { action: 'cancel_checkout' }
+      })
+      
+      // Construct error message with cart preservation notice
+      let errorContent = errorResponse.message
+      errorContent += '\n\n💡 장바구니 내용은 안전하게 보관되었습니다.'
       
       const errorMessage: Message = {
         id: generateMessageId(),
-        content: errorResponse.message,
+        content: errorContent,
         sender: 'bot',
         timestamp: new Date(),
         type: 'text',
@@ -656,7 +972,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false })
     }
-  }, [state.checkoutState, state.conversationContext, cart])
+  }, [state.checkoutState, state.conversationContext, cart, dispatch])
 
   const cancelCheckout = useCallback(() => {
     dispatch({ type: 'CANCEL_CHECKOUT' })
@@ -707,7 +1023,65 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
   }, [])
 
   // View cart contents
-  const viewCart = useCallback(() => {
+  const viewCart = useCallback(async () => {
+    console.log('🛒 viewCart called')
+    console.log('  - cart items:', cart.items.length)
+    console.log('  - cart sessionId:', cart.sessionId)
+    console.log('  - cart userId:', cart.userId)
+    console.log('  - chatbot sessionId:', state.conversationContext.sessionId)
+    
+    // CartContext의 sessionId가 없으면 설정
+    if (!cart.sessionId && state.conversationContext.sessionId) {
+      console.log('🔧 Setting cart session from chatbot context')
+      cart.setSession(state.conversationContext.sessionId, 'guest')
+      // 약간의 지연 후 동기화
+      await new Promise(resolve => setTimeout(resolve, 100))
+      await cart.syncWithBackend()
+    }
+    
+    // 동기화 후에도 비어있으면 백엔드에서 직접 조회
+    if (cart.items.length === 0 && state.conversationContext.sessionId) {
+      console.log('🔍 Fetching cart from backend directly')
+      try {
+        const { chatbotApi } = await import('@/utils/api')
+        const response = await chatbotApi.get(
+          `/api/v1/chatbot/cart/guest/${state.conversationContext.sessionId}`
+        )
+        
+        if (response.data.success && response.data.cart.total_items > 0) {
+          // 백엔드에 장바구니가 있으면 표시
+          const cartData = response.data.cart
+          const cartMessage: Message = {
+            id: generateMessageId(),
+            content: `🛒 장바구니 (${cartData.total_items}개 상품, 총 ${cartData.total_amount.toLocaleString()}원)`,
+            sender: 'bot',
+            timestamp: new Date(),
+            type: 'text',
+            data: {
+              quickActions: [
+                {
+                  id: 'checkout',
+                  label: '결제하기',
+                  actionType: 'checkout',
+                  payload: { action: 'checkout' }
+                },
+                {
+                  id: 'continue_shopping',
+                  label: '쇼핑 계속하기',
+                  actionType: 'custom',
+                  payload: { action: 'continue_shopping' }
+                }
+              ]
+            }
+          }
+          dispatch({ type: 'ADD_MESSAGE', payload: cartMessage })
+          return
+        }
+      } catch (error) {
+        console.error('Failed to fetch cart from backend:', error)
+      }
+    }
+    
     if (cart.items.length === 0) {
       const emptyMessage: Message = {
         id: generateMessageId(),
@@ -749,36 +1123,120 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
           {
             id: 'checkout',
             label: '결제하기',
-            type: 'primary',
+            actionType: 'checkout',
             payload: { action: 'checkout' }
           },
           {
             id: 'clear_cart',
             label: '장바구니 비우기',
-            type: 'danger',
+            actionType: 'custom',
             payload: { action: 'clear_cart' }
           },
           {
             id: 'continue_shopping',
             label: '쇼핑 계속하기',
-            type: 'secondary',
+            actionType: 'custom',
             payload: { action: 'continue_shopping' }
           }
         ]
       }
     }
     dispatch({ type: 'ADD_MESSAGE', payload: cartMessage })
-  }, [cart, dispatch])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch, state.conversationContext.sessionId])
 
   // Handle QuickAction clicks
   const handleQuickAction = useCallback(async (action: QuickActionItem) => {
+    console.log('🎯 QuickAction clicked:', action)
+    
+    // Handle actions based on actionType first (standardized action types)
+    switch (action.actionType) {
+      case 'add_to_cart':
+        // Add product to cart from quick action
+        if (action.payload?.productId) {
+          await addProductToCart(action.payload.productId, action.payload.quantity || 1)
+        }
+        return
+      
+      case 'buy_now':
+        // Direct purchase - add to cart and start checkout
+        if (action.payload?.productId) {
+          await addProductToCart(action.payload.productId, 1)
+          // Start direct checkout with the product
+          await startCheckout('direct', action.payload.productId)
+        }
+        return
+      
+      case 'view_cart':
+        // Show cart contents
+        viewCart()
+        return
+      
+      case 'checkout':
+        // Start checkout process from cart
+        await startCheckout('cart')
+        return
+      
+      case 'show_detail':
+        // Show product detail (could be implemented to show more info)
+        if (action.payload?.productId) {
+          const detailMessage: Message = {
+            id: generateMessageId(),
+            content: `상품 상세 정보를 확인하시려면 상품을 클릭해주세요.`,
+            sender: 'bot',
+            timestamp: new Date(),
+            type: 'text'
+          }
+          dispatch({ type: 'ADD_MESSAGE', payload: detailMessage })
+        }
+        return
+      
+      case 'next_page':
+      case 'previous_page':
+        // Pagination actions - could be implemented for product lists
+        console.log('📄 Page action:', action.actionType)
+        const pageMessage: Message = {
+          id: generateMessageId(),
+          content: '페이지 이동 기능은 곧 추가될 예정입니다. 😊',
+          sender: 'bot',
+          timestamp: new Date(),
+          type: 'text'
+        }
+        dispatch({ type: 'ADD_MESSAGE', payload: pageMessage })
+        console.log('📄 Page message dispatched')
+        return
+      
+      case 'custom':
+        // Handle custom actions via payload
+        break
+      
+      default:
+        // Unknown action type
+        break
+    }
+
+    // Handle custom actions via payload.action
     if (!action.payload) return
 
     const { action: actionType, productId, content } = action.payload
 
     switch (actionType) {
+      case 'add_to_cart':
+        // Add product to cart
+        if (productId) {
+          await addProductToCart(productId, action.payload.quantity || 1)
+        }
+        break
+
       case 'retry_message':
         // Retry sending the message
+        if (content) {
+          await sendMessage(content)
+        }
+        break
+      
+      case 'retry':
+        // Generic retry action - check what to retry
         if (content) {
           await sendMessage(content)
         }
@@ -789,14 +1247,25 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
         if (productId) {
           const item = cart.items.find(i => i.id === productId)
           if (item) {
-            cart.updateQuantity(productId, item.quantity + 1)
+            const oldQuantity = item.quantity
+            await cart.updateQuantity(productId, item.quantity + 1)
             
             const message: Message = {
               id: generateMessageId(),
-              content: `✅ 수량이 증가되었습니다. (${item.quantity} → ${item.quantity + 1}개)`,
+              content: `✅ 수량이 증가되었습니다. (${oldQuantity} → ${oldQuantity + 1}개)\n\n현재 장바구니: ${cart.totalItems + 1}개 상품, 총 ${(cart.totalPrice + item.price).toLocaleString()}원`,
               sender: 'bot',
               timestamp: new Date(),
-              type: 'text'
+              type: 'text',
+              data: {
+                quickActions: [
+                  {
+                    id: 'view_cart_after_increase',
+                    label: '장바구니 보기',
+                    actionType: 'view_cart',
+                    payload: { action: 'view_cart' }
+                  }
+                ]
+              }
             }
             dispatch({ type: 'ADD_MESSAGE', payload: message })
           }
@@ -808,27 +1277,49 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
         if (productId) {
           const item = cart.items.find(i => i.id === productId)
           if (item) {
+            const oldQuantity = item.quantity
             if (item.quantity > 1) {
-              cart.updateQuantity(productId, item.quantity - 1)
+              await cart.updateQuantity(productId, item.quantity - 1)
               
               const message: Message = {
                 id: generateMessageId(),
-                content: `✅ 수량이 감소되었습니다. (${item.quantity} → ${item.quantity - 1}개)`,
+                content: `✅ 수량이 감소되었습니다. (${oldQuantity} → ${oldQuantity - 1}개)\n\n현재 장바구니: ${cart.totalItems - 1}개 상품, 총 ${(cart.totalPrice - item.price).toLocaleString()}원`,
                 sender: 'bot',
                 timestamp: new Date(),
-                type: 'text'
+                type: 'text',
+                data: {
+                  quickActions: [
+                    {
+                      id: 'view_cart_after_decrease',
+                      label: '장바구니 보기',
+                      actionType: 'view_cart',
+                      payload: { action: 'view_cart' }
+                    }
+                  ]
+                }
               }
               dispatch({ type: 'ADD_MESSAGE', payload: message })
             } else {
               // Quantity is 1, will be removed
-              cart.updateQuantity(productId, 0)
+              const itemName = item.name
+              await cart.updateQuantity(productId, 0)
               
               const message: Message = {
                 id: generateMessageId(),
-                content: `✅ 상품이 장바구니에서 제거되었습니다.`,
+                content: `✅ ${itemName}이(가) 장바구니에서 제거되었습니다.\n\n현재 장바구니: ${Math.max(0, cart.totalItems - 1)}개 상품, 총 ${Math.max(0, cart.totalPrice - item.price).toLocaleString()}원`,
                 sender: 'bot',
                 timestamp: new Date(),
-                type: 'text'
+                type: 'text',
+                data: {
+                  quickActions: [
+                    {
+                      id: 'view_cart_after_remove',
+                      label: '장바구니 보기',
+                      actionType: 'view_cart',
+                      payload: { action: 'view_cart' }
+                    }
+                  ]
+                }
               }
               dispatch({ type: 'ADD_MESSAGE', payload: message })
             }
@@ -841,14 +1332,26 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
         if (productId) {
           const item = cart.items.find(i => i.id === productId)
           if (item) {
-            cart.removeItem(productId)
+            const itemName = item.name
+            const itemPrice = item.price * item.quantity
+            await cart.removeItem(productId)
             
             const message: Message = {
               id: generateMessageId(),
-              content: `✅ ${item.name}이(가) 장바구니에서 제거되었습니다.`,
+              content: `✅ ${itemName}이(가) 장바구니에서 제거되었습니다.\n\n현재 장바구니: ${Math.max(0, cart.totalItems - item.quantity)}개 상품, 총 ${Math.max(0, cart.totalPrice - itemPrice).toLocaleString()}원`,
               sender: 'bot',
               timestamp: new Date(),
-              type: 'text'
+              type: 'text',
+              data: {
+                quickActions: cart.items.length > 1 ? [
+                  {
+                    id: 'view_cart_after_remove',
+                    label: '장바구니 보기',
+                    actionType: 'view_cart',
+                    payload: { action: 'view_cart' }
+                  }
+                ] : undefined
+              }
             }
             dispatch({ type: 'ADD_MESSAGE', payload: message })
           }
@@ -862,20 +1365,30 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
 
       case 'clear_cart':
         // Clear all items from cart
-        cart.clearCart()
+        await cart.clearCart()
         const clearMessage: Message = {
           id: generateMessageId(),
           content: '✅ 장바구니가 비워졌습니다.',
           sender: 'bot',
           timestamp: new Date(),
-          type: 'text'
+          type: 'text',
+          data: {
+            quickActions: [
+              {
+                id: 'continue_after_clear',
+                label: '쇼핑 계속하기',
+                actionType: 'custom',
+                payload: { action: 'continue_shopping' }
+              }
+            ]
+          }
         }
         dispatch({ type: 'ADD_MESSAGE', payload: clearMessage })
         break
 
       case 'checkout':
         // Start checkout process
-        startCheckout('cart')
+        await startCheckout('cart')
         break
 
       case 'continue_shopping':
@@ -898,12 +1411,85 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
       case 'cancel_checkout':
         // Cancel checkout
         cancelCheckout()
+        const cancelCheckoutMessage: Message = {
+          id: generateMessageId(),
+          content: '✅ 결제가 취소되었습니다.\n\n장바구니 내용은 그대로 유지됩니다.',
+          sender: 'bot',
+          timestamp: new Date(),
+          type: 'text',
+          data: {
+            quickActions: [
+              {
+                id: 'view_cart_after_cancel',
+                label: '장바구니 보기',
+                actionType: 'view_cart',
+                payload: { action: 'view_cart' }
+              },
+              {
+                id: 'continue_after_cancel',
+                label: '쇼핑 계속하기',
+                actionType: 'custom',
+                payload: { action: 'continue_shopping' }
+              }
+            ]
+          }
+        }
+        dispatch({ type: 'ADD_MESSAGE', payload: cancelCheckoutMessage })
+        break
+      
+      case 'help':
+        // Show help message
+        const helpMessage: Message = {
+          id: generateMessageId(),
+          content: '💬 도움이 필요하신가요?\n\n다음과 같은 질문을 해보세요:\n• "향수 추천해줘"\n• "가격대별 향수 보여줘"\n• "배송 관련 문의"\n• "교환/반품 정책"\n\n무엇을 도와드릴까요?',
+          sender: 'bot',
+          timestamp: new Date(),
+          type: 'text'
+        }
+        dispatch({ type: 'ADD_MESSAGE', payload: helpMessage })
+        break
+      
+      case 'contact_support':
+        // Show contact support message
+        const supportMessage: Message = {
+          id: generateMessageId(),
+          content: '📞 고객센터 안내\n\n• 전화: 1588-XXXX\n• 이메일: support@c4pang.com\n• 운영시간: 평일 09:00-18:00\n\n문의사항을 남겨주시면 빠르게 도와드리겠습니다! 😊',
+          sender: 'bot',
+          timestamp: new Date(),
+          type: 'text',
+          data: {
+            quickActions: [
+              {
+                id: 'continue_after_support',
+                label: '돌아가기',
+                actionType: 'custom',
+                payload: { action: 'continue_shopping' }
+              }
+            ]
+          }
+        }
+        dispatch({ type: 'ADD_MESSAGE', payload: supportMessage })
+        break
+      
+      case 'cancel':
+        // Just acknowledge cancellation
+        const cancelMessage: Message = {
+          id: generateMessageId(),
+          content: '알겠습니다. 다른 도움이 필요하시면 말씀해주세요! 😊',
+          sender: 'bot',
+          timestamp: new Date(),
+          type: 'text'
+        }
+        dispatch({ type: 'ADD_MESSAGE', payload: cancelMessage })
         break
 
       default:
+        // Unknown action - log for debugging
+        console.warn('Unknown quick action:', actionType, action)
         break
     }
-  }, [cart, dispatch, viewCart, startCheckout])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch, viewCart, startCheckout, sendMessage, confirmOrder, cancelCheckout, addProductToCart])
 
   const value: ChatbotContextType = {
     state,
