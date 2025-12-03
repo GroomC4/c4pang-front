@@ -20,6 +20,7 @@ import {
   Message,
 } from '@/types/chatbot'
 import { CartItem } from '@/types'
+import { getProductImage } from './imageMapper'
 
 /**
  * Convert backend QuickAction to frontend QuickActionItem
@@ -52,7 +53,9 @@ export function convertProductCard(backendProduct: BackendProductCard): ProductR
     name: backendProduct.name,
     brand: backendProduct.brand,
     price: backendProduct.price || 0,
-    image: backendProduct.image_url || '',
+    image:
+      backendProduct.image_url ||
+      getProductImage(backendProduct.brand, backendProduct.name),
     description: backendProduct.description || '',
     concentration: backendProduct.concentration,
     mainAccords: backendProduct.main_accords,
@@ -114,7 +117,8 @@ export function convertCartItem(backendItem: BackendCartItem): CartItem {
     brand: backendItem.brand,
     price: backendItem.price,
     quantity: backendItem.quantity,
-    image: backendItem.image_url || '',
+    image:
+      backendItem.image_url || getProductImage(backendItem.brand, backendItem.name),
     description: '', // Not provided by backend cart item
     notes: [], // Not provided by backend cart item
     category: backendItem.concentration || '', // Use concentration as category fallback

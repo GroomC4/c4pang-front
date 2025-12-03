@@ -51,13 +51,19 @@ export function Cart({ isOpen, onClose, items, onUpdateQuantity, onRemove, total
                 >
                   <div className="flex gap-4">
                     <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-100">
-                      <Image
-                        src={item.image}
-                        alt={item.name}
-                        fill
-                        className="object-cover"
-                        sizes="80px"
-                      />
+                      {item.image && item.image !== '' ? (
+                        <Image
+                          src={item.image}
+                          alt={item.name}
+                          fill
+                          className="object-cover"
+                          sizes="80px"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-purple-300 text-3xl">
+                          🌸
+                        </div>
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-1">

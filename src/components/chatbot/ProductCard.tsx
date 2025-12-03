@@ -45,7 +45,7 @@ export function ProductCard({
   const mainNotes = product.notes?.top?.slice(0, 3) || product.fragrance?.slice(0, 3) || []
   
   // 기본 이미지 URL
-  const defaultImage = '/images/perfume-placeholder.png'
+  const defaultImage = '/images/perfume-placeholder.svg'
   const imageUrl = product.image || defaultImage
 
   return (

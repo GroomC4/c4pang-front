@@ -23,6 +23,7 @@ import {
   resetFailures,
   getFailureCount 
 } from '@/utils/errorHandler'
+import { getProductImage } from '@/utils/imageMapper'
 
 const generateSessionId = (): string => {
   return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -471,7 +472,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
         price: productInfo.price,
         description: productInfo.description,
         notes: productInfo.notes?.top || [],
-        image: productInfo.image,
+        image: productInfo.image || getProductImage(productInfo.brand, productInfo.name),
         category: productInfo.concentration || 'general'
       }
 
@@ -493,7 +494,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
       // Show success message with updated cart status from backend
       const successMessage: Message = {
         id: generateMessageId(),
-        content: `✅ ${productInfo.name}이(가) 장바구니에 추가되었습니다!\n\n현재 장바구니: ${cart.totalItems}개 상품, 총 ${cart.totalPrice.toLocaleString()}원`,
+        content: `✅ ${productInfo.name}이(가) 장바구니에 추가되었습니다!`,
         sender: 'bot',
         timestamp: new Date(),
         type: 'text',
@@ -1100,7 +1101,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
       name: item.name,
       brand: item.brand,
       price: item.price,
-      image: item.image,
+      image: item.image || getProductImage(item.brand, item.name),
       description: item.description,
       fragrance: item.notes || [],
       notes: {
