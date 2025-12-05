@@ -55,7 +55,7 @@ Next.js App Router 기반의 페이지 전환
 | ------------- | ------------------------------------------- | ---------------------------------- |
 | Context API   | AuthProvider, CartProvider, ChatbotProvider | 전역 상태 관리                           |
 | Singleton     | ChatbotService                              | 챗봇 로직의 단일 인스턴스 유지                  |
-| API Proxy     | next.config.js rewrites                     | `/api/*` 요청 → `localhost:8081` 프록시 |
+| API Proxy (MSA) | next.config.js rewrites                   | 챗봇 API → `8000`, 고객 서비스 API → `8081` (MSA 환경) |
 | Mock Data     | mockData.ts                                 | 개발 및 데모용 fallback 데이터              |
 | Layout System | RootLayout                                  | 글로벌 레이아웃 및 폰트 설정                   |
 
@@ -148,26 +148,85 @@ npm run lint
 
 7. 환경 변수 (Environment Variables)
 
-예시:
+`.env.local` 파일을 생성하여 다음 환경 변수를 설정한다:
 
+```bash
+# Auth0 설정
 AUTH0_SECRET=...
 AUTH0_BASE_URL=http://localhost:3000
 AUTH0_ISSUER_BASE_URL=...
 AUTH0_CLIENT_ID=...
 AUTH0_CLIENT_SECRET=...
-BACKEND_API_URL=http://localhost:8081
 
-8. API 프록시 설정 (API Proxy Configuration)
+# MSA Backend URLs
+# Chatbot API (챗봇 서비스)
+NEXT_PUBLIC_CHATBOT_URL=http://localhost:8000
 
-Next.js의 rewrite 설정을 통해 프론트엔드에서의 /api/* 요청을 백엔드로 전달한다.
+# Customer Service API (고객 서비스)
+NEXT_PUBLIC_CUSTOMER_SERVICE_URL=http://localhost:8081
+```
 
+참고: `.env.example` 파일에서 필요한 환경 변수 템플릿을 확인할 수 있다
+
+8. API 프록시 설정 (API Proxy Configuration - MSA)
+
+C4pang은 MSA(Microservices Architecture) 환경으로 구성되어 있다:
+- **챗봇 서비스**: 포트 8000
+- **고객 서비스**: 포트 8081
+
+Next.js의 rewrite 설정을 통해 각 서비스로 요청을 올바르게 라우팅한다.
+
+```javascript
 // next.config.js
-rewrites: async () => [
-  {
-    source: "/api/:path*",
-    destination: "http://localhost:8081/:path*",
-  },
-];
+async rewrites() {
+  const chatbotUrl = process.env.NEXT_PUBLIC_CHATBOT_URL || 'http://localhost:8000'
+  const customerServiceUrl = process.env.NEXT_PUBLIC_CUSTOMER_SERVICE_URL || 'http://localhost:8081'
+  
+  return [
+    // 챗봇 API는 8000 포트로 라우팅
+    {
+      source: '/api/v1/chatbot/:path*',
+      destination: `${chatbotUrl}/api/v1/chatbot/:path*`,
+    },
+    // 나머지 API는 customer service (8081)로 라우팅
+    {
+      source: '/api/:path*',
+      destination: `${customerServiceUrl}/api/:path*`,
+    },
+  ]
+}
+```
+
+### 8.1 프록시 테스트
+
+백엔드 서버가 실행 중일 때 프록시 설정을 테스트할 수 있다:
+
+```bash
+# 백엔드 서버 시작 (c4ang-chatbot 디렉토리에서)
+cd c4ang-chatbot
+python main.py
+
+# 프론트엔드 개발 서버 시작
+cd c4pang-front
+npm run dev
+
+# 프록시 테스트 스크립트 실행
+node scripts/test-proxy.js
+```
+
+### 8.2 환경별 설정 (MSA)
+
+**개발 환경:**
+- 챗봇: `http://localhost:8000`
+- 고객 서비스: `http://localhost:8081`
+
+**프로덕션:**
+- `.env.local`에서 `NEXT_PUBLIC_CHATBOT_URL`과 `NEXT_PUBLIC_CUSTOMER_SERVICE_URL` 설정
+
+### 8.3 API 라우팅 규칙
+
+- `/api/v1/chatbot/*` → 챗봇 서비스 (포트 8000)
+- `/api/*` (기타) → 고객 서비스 (포트 8081)
 
 9. 주요 코드 엔트리 포인트 (Key Entry Points)
 파일	설명

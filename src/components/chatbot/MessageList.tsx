@@ -62,14 +62,16 @@ const MessageList: React.FC<MessageListProps> = ({ messages, isTyping }) => {
       ref={scrollAreaRef}
       onScroll={handleScroll}
       style={{
-        flex: '1',
-        overflowY: 'auto',
+        height: '100%',
+        overflowY: 'scroll',
+        overflowX: 'hidden',
         padding: '16px',
-        maxHeight: 'calc(100% - 120px)',
+        paddingRight: '12px',
         display: 'flex',
         flexDirection: 'column',
         gap: '16px'
       }}
+      className="custom-scrollbar"
     >
       {messages.map((message, index) => (
         <MessageBubble

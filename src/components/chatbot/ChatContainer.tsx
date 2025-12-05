@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useChatbot } from '@/contexts/ChatbotContext'
 import MessageList from './MessageList'
 import MessageInput from './MessageInput'
@@ -13,6 +13,7 @@ interface ChatContainerProps {
 const ChatContainer: React.FC<ChatContainerProps> = ({ isOpen, onClose }) => {
   const { state, sendMessage, clearMessages } = useChatbot()
   const containerRef = useRef<HTMLDivElement>(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   useEffect(() => {
     if (isOpen && containerRef.current) {
@@ -20,25 +21,37 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ isOpen, onClose }) => {
     }
   }, [isOpen])
 
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen)
+  }
+
   if (!isOpen) return null
 
   return (
     <div style={{
       position: 'fixed',
-      bottom: '90px',
-      right: '20px',
-      zIndex: 50
+      ...(isFullscreen ? {
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 9999
+      } : {
+        bottom: '90px',
+        right: '20px',
+        zIndex: 50
+      })
     }}>
       <div 
         ref={containerRef}
         className="chatbot-container"
         style={{
           backgroundColor: 'white',
-          borderRadius: 'var(--radius-large)',
+          borderRadius: isFullscreen ? '0' : 'var(--radius-large)',
           boxShadow: 'var(--shadow-strong)',
           border: '1px solid var(--neutral-200)',
-          width: 'min(400px, calc(100vw - 40px))',
-          height: 'min(600px, calc(100vh - 140px))',
+          width: isFullscreen ? '100vw' : 'min(400px, calc(100vw - 40px))',
+          height: isFullscreen ? '100vh' : 'min(600px, calc(100vh - 140px))',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -89,6 +102,39 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ isOpen, onClose }) => {
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              onClick={toggleFullscreen}
+              style={{
+                padding: '8px',
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                border: 'none',
+                color: 'white',
+                cursor: 'pointer',
+                borderRadius: 'var(--radius-small)',
+                transition: 'all 0.3s ease',
+                backdropFilter: 'blur(10px)'
+              }}
+              title={isFullscreen ? '일반 모드' : '전체화면'}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'
+                e.currentTarget.style.transform = 'scale(1.05)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'
+                e.currentTarget.style.transform = 'scale(1)'
+              }}
+            >
+              {isFullscreen ? (
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+              )}
+            </button>
+            
             <button
               onClick={() => {
                 if (window.confirm('대화 내역을 모두 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
@@ -150,7 +196,12 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-hidden">
+        <div style={{ 
+          flex: 1, 
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
           <MessageList messages={state.messages} isTyping={state.isTyping} />
         </div>
 

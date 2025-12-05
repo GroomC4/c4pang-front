@@ -284,6 +284,21 @@ export default function SignupPage() {
           </ul>
         </div>
 
+        <div className="mt-4 bg-indigo-50 rounded-lg p-4">
+          <h3 className="font-medium text-indigo-800 mb-2">🏪 판매자이신가요?</h3>
+          <p className="text-sm text-indigo-700 mb-3">
+            C4ang에서 스토어를 운영하고 상품을 판매해보세요!
+          </p>
+          <Link href="/signup/seller">
+            <button
+              type="button"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 text-sm"
+            >
+              판매자로 가입하기
+            </button>
+          </Link>
+        </div>
+
         <div className="mt-8 text-center text-xs text-gray-400">
           회원가입 시 <Link href="#" className="underline">이용약관</Link>,{' '}
           <Link href="#" className="underline">개인정보처리방침</Link> 및{' '}

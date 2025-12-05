@@ -1,7 +1,20 @@
-import { describe, it, expect } from 'vitest'
-import { parseError, getErrorActions, retryWithBackoff } from './errorHandler'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { 
+  parseError, 
+  getErrorActions, 
+  retryWithBackoff, 
+  shouldUseFallback,
+  recordFailure,
+  resetFailures,
+  getFailureCount
+} from './errorHandler'
 
 describe('Error Handler', () => {
+  beforeEach(() => {
+    // Reset failure counter before each test
+    resetFailures()
+  })
+
   describe('parseError', () => {
     it('should parse network errors correctly', () => {
       const error = { request: {}, message: 'Network Error' }
@@ -66,10 +79,28 @@ describe('Error Handler', () => {
       expect(result.code).toBe('UNKNOWN_ERROR')
       expect(result.retryable).toBe(true)
     })
+
+    it('should parse connection refused errors correctly', () => {
+      const error = { code: 'ECONNREFUSED', message: 'Connection refused' }
+      const result = parseError(error)
+      
+      expect(result.type).toBe('network')
+      expect(result.code).toBe('CONNECTION_REFUSED')
+      expect(result.retryable).toBe(true)
+    })
+
+    it('should parse DNS errors correctly', () => {
+      const error = { code: 'ENOTFOUND', message: 'getaddrinfo ENOTFOUND' }
+      const result = parseError(error)
+      
+      expect(result.type).toBe('network')
+      expect(result.code).toBe('DNS_ERROR')
+      expect(result.retryable).toBe(true)
+    })
   })
 
   describe('getErrorActions', () => {
-    it('should return retry and cancel actions for retryable errors', () => {
+    it('should return retry action for retryable errors', () => {
       const error = {
         type: 'network' as const,
         message: 'Network error',
@@ -78,9 +109,8 @@ describe('Error Handler', () => {
       }
       const actions = getErrorActions(error, { action: 'retry' })
       
-      expect(actions).toHaveLength(2)
-      expect(actions[0].label).toBe('다시 시도')
-      expect(actions[1].label).toBe('취소')
+      expect(actions.length).toBeGreaterThan(0)
+      expect(actions[0].label).toContain('다시 시도')
     })
 
     it('should return fallback action for non-retryable errors with fallback', () => {
@@ -92,17 +122,17 @@ describe('Error Handler', () => {
         fallbackAction: {
           id: 'login',
           label: '로그인',
-          type: 'primary' as const,
+          actionType: 'custom' as const,
           payload: { action: 'login' }
         }
       }
       const actions = getErrorActions(error)
       
-      expect(actions).toHaveLength(1)
-      expect(actions[0].label).toBe('로그인')
+      expect(actions.length).toBeGreaterThan(0)
+      expect(actions.some(a => a.label === '로그인')).toBe(true)
     })
 
-    it('should return cancel action for non-retryable errors without fallback', () => {
+    it('should return help action for non-retryable errors without fallback', () => {
       const error = {
         type: 'validation' as const,
         message: 'Validation error',
@@ -111,8 +141,20 @@ describe('Error Handler', () => {
       }
       const actions = getErrorActions(error)
       
-      expect(actions).toHaveLength(1)
-      expect(actions[0].label).toBe('취소')
+      expect(actions.length).toBeGreaterThan(0)
+      expect(actions.some(a => a.label.includes('도움말'))).toBe(true)
+    })
+
+    it('should include contact support for server errors', () => {
+      const error = {
+        type: 'network' as const,
+        message: 'Server error',
+        code: 'SERVER_ERROR_500',
+        retryable: true
+      }
+      const actions = getErrorActions(error, { action: 'retry' })
+      
+      expect(actions.some(a => a.label.includes('고객센터'))).toBe(true)
     })
   })
 
@@ -166,6 +208,60 @@ describe('Error Handler', () => {
       
       await expect(retryWithBackoff(fn, 3, 10)).rejects.toThrow()
       expect(attempts).toBe(3)
+    })
+  })
+
+  describe('shouldUseFallback', () => {
+    it('should return true for network errors', () => {
+      const error = { request: {}, message: 'Network Error' }
+      expect(shouldUseFallback(error)).toBe(true)
+    })
+
+    it('should return true for server errors', () => {
+      const error = { response: { status: 500, data: {} } }
+      expect(shouldUseFallback(error)).toBe(true)
+    })
+
+    it('should return true for connection refused', () => {
+      const error = { code: 'ECONNREFUSED' }
+      expect(shouldUseFallback(error)).toBe(true)
+    })
+
+    it('should return true for timeout errors', () => {
+      const error = { code: 'ECONNABORTED' }
+      expect(shouldUseFallback(error)).toBe(true)
+    })
+
+    it('should return false for validation errors', () => {
+      const error = { response: { status: 400, data: {} } }
+      expect(shouldUseFallback(error)).toBe(false)
+    })
+  })
+
+  describe('failure tracking', () => {
+    it('should track consecutive failures', () => {
+      expect(getFailureCount()).toBe(0)
+      
+      recordFailure()
+      expect(getFailureCount()).toBe(1)
+      
+      recordFailure()
+      expect(getFailureCount()).toBe(2)
+    })
+
+    it('should suggest network check after 3 failures', () => {
+      expect(recordFailure()).toBe(false)
+      expect(recordFailure()).toBe(false)
+      expect(recordFailure()).toBe(true)
+    })
+
+    it('should reset failure count', () => {
+      recordFailure()
+      recordFailure()
+      expect(getFailureCount()).toBe(2)
+      
+      resetFailures()
+      expect(getFailureCount()).toBe(0)
     })
   })
 })

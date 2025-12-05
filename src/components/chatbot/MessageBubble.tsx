@@ -11,6 +11,7 @@ import { OrderSummary } from './OrderSummary'
 import { OrderConfirmation } from './OrderConfirmation'
 import { QuickActionBar } from './QuickActionBar'
 import { useChatbot } from '@/contexts/ChatbotContext'
+import { parseProductDescriptions, extractIntroText, extractOutroText } from '@/utils/messageParser'
 
 interface MessageBubbleProps {
   message: Message
@@ -73,7 +74,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLastMessage, o
               }}>
               <span style={{ color: 'white', fontSize: '12px', fontWeight: 'bold' }}>🌸</span>
             </div>
-            <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>퍼퓸퀸</span>
+            <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>C4ang AI</span>
           </div>
         )}
         
@@ -91,22 +92,70 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLastMessage, o
             animation: isLastMessage ? 'pulse 1s' : 'none'
           }}
         >
-          {/* Message Content */}
-          <div style={{
+          {/* Recommendation View - 상품과 설명을 함께 표시 */}
+          {!isUser && message.type === 'recommendation' && message.data?.products && (() => {
+            const products = message.data.products
+            const descriptions = parseProductDescriptions(message.content, products)
+            const introText = extractIntroText(message.content)
+            const outroText = extractOutroText(message.content, products.length)
+            
+            return (
+              <>
+                {/* 인트로 텍스트 */}
+                {introText && (
+                  <div style={{
+                    fontSize: '14px',
+                    lineHeight: '1.6',
+                    whiteSpace: 'pre-wrap',
+                    marginBottom: '12px'
+                  }}>
+                    {introText}
+                  </div>
+                )}
+                
+                {/* 상품 카드와 설명 */}
+                <div style={{ marginBottom: outroText ? '12px' : '0' }}>
+                  <ProductListView 
+                    products={products}
+                    quickActions={message.data.quickActions}
+                    productDescriptions={descriptions}
+                  />
+                </div>
+                
+                {/* 아웃트로 텍스트 */}
+                {outroText && (
+                  <div style={{
+                    fontSize: '14px',
+                    lineHeight: '1.6',
+                    whiteSpace: 'pre-wrap',
+                    marginTop: '12px'
+                  }}>
+                    {outroText}
+                  </div>
+                )}
+              </>
+            )
+          })()}
+
+          {/* Message Content - 일반 텍스트 메시지 */}
+          {!isUser && message.type !== 'recommendation' && (
+            <div style={{
               fontSize: '14px',
               lineHeight: '1.6',
               whiteSpace: 'pre-wrap'
             }}>
-            {message.content}
-          </div>
-
-          {/* Recommendation View */}
-          {!isUser && message.type === 'recommendation' && message.data?.recommendations && (
-            <div style={{ marginTop: '12px' }}>
-              <RecommendationView 
-                recommendations={message.data.recommendations}
-                onProductClick={onProductClick}
-              />
+              {message.content}
+            </div>
+          )}
+          
+          {/* User Message Content */}
+          {isUser && (
+            <div style={{
+              fontSize: '14px',
+              lineHeight: '1.6',
+              whiteSpace: 'pre-wrap'
+            }}>
+              {message.content}
             </div>
           )}
 

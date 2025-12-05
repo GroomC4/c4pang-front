@@ -56,13 +56,19 @@ export function CartProductCard({
       <div className="flex gap-4 p-4">
         {/* 상품 이미지 */}
         <div className="relative w-24 h-24 flex-shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-purple-50 to-violet-50">
-          <Image
-            src={product.image}
-            alt={product.name}
-            fill
-            className="object-cover"
-            sizes="96px"
-          />
+          {product.image && product.image !== '' ? (
+            <Image
+              src={product.image}
+              alt={product.name}
+              fill
+              className="object-cover"
+              sizes="96px"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-purple-300 text-3xl">
+              🌸
+            </div>
+          )}
         </div>
 
         {/* 상품 정보 */}
