@@ -190,8 +190,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
       })
     } catch (error) {
-      console.error('Failed to sync cart with backend:', error)
+      console.warn('Backend cart sync skipped (cart API not available):', error)
       dispatch({ type: 'SET_SYNCING', payload: false })
+      // Silently fail - local cart state is preserved
     }
   }
 
@@ -199,15 +200,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // Add to local state immediately for responsive UI
     dispatch({ type: 'ADD_ITEM', payload: product })
 
-    // Sync with backend if session is available
+    // Sync with backend if session is available (optional - chatbot doesn't have cart API yet)
     if (state.sessionId && state.userId) {
       try {
         await cartApiService.addToCart(state.userId, state.sessionId, product.id, 1)
         // Sync to get updated cart state from backend
         await syncWithBackend()
       } catch (error) {
-        console.error('Failed to sync add to cart with backend:', error)
-        // Keep local state even if backend fails
+        console.warn('Backend cart sync failed (expected if chatbot cart API not implemented):', error)
+        // Keep local state even if backend fails - this is OK for chatbot recommendations
       }
     }
   }
@@ -222,7 +223,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         await cartApiService.removeFromCart(state.userId, state.sessionId, productId)
         await syncWithBackend()
       } catch (error) {
-        console.error('Failed to sync remove from cart with backend:', error)
+        console.warn('Backend cart sync failed:', error)
       }
     }
   }
@@ -237,7 +238,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         await cartApiService.updateQuantity(state.userId, state.sessionId, productId, quantity)
         await syncWithBackend()
       } catch (error) {
-        console.error('Failed to sync update quantity with backend:', error)
+        console.warn('Backend cart sync failed:', error)
       }
     }
   }
@@ -251,7 +252,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       try {
         await cartApiService.clearCart(state.userId, state.sessionId)
       } catch (error) {
-        console.error('Failed to sync clear cart with backend:', error)
+        console.warn('Backend cart sync failed:', error)
       }
     }
   }

@@ -1027,62 +1027,8 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
   const viewCart = useCallback(async () => {
     console.log('🛒 viewCart called')
     console.log('  - cart items:', cart.items.length)
-    console.log('  - cart sessionId:', cart.sessionId)
-    console.log('  - cart userId:', cart.userId)
-    console.log('  - chatbot sessionId:', state.conversationContext.sessionId)
     
-    // CartContext의 sessionId가 없으면 설정
-    if (!cart.sessionId && state.conversationContext.sessionId) {
-      console.log('🔧 Setting cart session from chatbot context')
-      cart.setSession(state.conversationContext.sessionId, 'guest')
-      // 약간의 지연 후 동기화
-      await new Promise(resolve => setTimeout(resolve, 100))
-      await cart.syncWithBackend()
-    }
-    
-    // 동기화 후에도 비어있으면 백엔드에서 직접 조회
-    if (cart.items.length === 0 && state.conversationContext.sessionId) {
-      console.log('🔍 Fetching cart from backend directly')
-      try {
-        const { chatbotApi } = await import('@/utils/api')
-        const response = await chatbotApi.get(
-          `/api/v1/chatbot/cart/guest/${state.conversationContext.sessionId}`
-        )
-        
-        if (response.data.success && response.data.cart.total_items > 0) {
-          // 백엔드에 장바구니가 있으면 표시
-          const cartData = response.data.cart
-          const cartMessage: Message = {
-            id: generateMessageId(),
-            content: `🛒 장바구니 (${cartData.total_items}개 상품, 총 ${cartData.total_amount.toLocaleString()}원)`,
-            sender: 'bot',
-            timestamp: new Date(),
-            type: 'text',
-            data: {
-              quickActions: [
-                {
-                  id: 'checkout',
-                  label: '결제하기',
-                  actionType: 'checkout',
-                  payload: { action: 'checkout' }
-                },
-                {
-                  id: 'continue_shopping',
-                  label: '쇼핑 계속하기',
-                  actionType: 'custom',
-                  payload: { action: 'continue_shopping' }
-                }
-              ]
-            }
-          }
-          dispatch({ type: 'ADD_MESSAGE', payload: cartMessage })
-          return
-        }
-      } catch (error) {
-        console.error('Failed to fetch cart from backend:', error)
-      }
-    }
-    
+    // 로컬 장바구니가 비어있으면 빈 메시지 표시
     if (cart.items.length === 0) {
       const emptyMessage: Message = {
         id: generateMessageId(),
@@ -1143,8 +1089,7 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
       }
     }
     dispatch({ type: 'ADD_MESSAGE', payload: cartMessage })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch, state.conversationContext.sessionId])
+  }, [cart.items, cart.totalItems, cart.totalPrice, dispatch])
 
   // Handle QuickAction clicks
   const handleQuickAction = useCallback(async (action: QuickActionItem) => {
