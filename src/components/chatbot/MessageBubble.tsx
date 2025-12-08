@@ -231,6 +231,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isLastMessage, o
                   handleQuickAction({
                     id: 'continue_shopping',
                     label: '쇼핑 계속하기',
+                    actionType: 'custom',
                     type: 'secondary',
                     payload: { action: 'continue_shopping' }
                   })

@@ -33,7 +33,7 @@ function ShippingForm({ onSubmit, onCancel, initialData }: ShippingFormProps) {
     address: initialData?.address || '',
     addressDetail: initialData?.addressDetail || '',
     postalCode: initialData?.postalCode || '',
-    deliveryRequest: initialData?.deliveryRequest || ''
+    deliveryMessage: initialData?.deliveryMessage || ''
   })
 
   const [errors, setErrors] = useState<Partial<Record<keyof ShippingInfo, string>>>({})
@@ -76,7 +76,7 @@ function ShippingForm({ onSubmit, onCancel, initialData }: ShippingFormProps) {
     }
 
     // 상세주소 검증
-    if (!formData.addressDetail.trim()) {
+    if (!formData.addressDetail?.trim()) {
       newErrors.addressDetail = '상세주소를 입력해주세요'
     }
 
@@ -217,13 +217,13 @@ function ShippingForm({ onSubmit, onCancel, initialData }: ShippingFormProps) {
 
         {/* 배송 요청사항 */}
         <div>
-          <label htmlFor="deliveryRequest" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="deliveryMessage" className="block text-sm font-medium text-gray-700 mb-1">
             배송 요청사항
           </label>
           <textarea
-            id="deliveryRequest"
-            value={formData.deliveryRequest}
-            onChange={(e) => handleChange('deliveryRequest', e.target.value)}
+            id="deliveryMessage"
+            value={formData.deliveryMessage}
+            onChange={(e) => handleChange('deliveryMessage', e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
             placeholder="배송 시 요청사항을 입력해주세요 (선택)"
             rows={3}

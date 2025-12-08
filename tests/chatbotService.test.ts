@@ -5,12 +5,12 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ChatbotService } from '@/services/chatbotService'
-import { api } from '@/utils/api'
+import { chatbotApi } from '@/utils/api'
 import { BackendBotResponse } from '@/types/chatbot'
 
 // Mock the API module
 vi.mock('@/utils/api', () => ({
-  api: {
+  chatbotApi: {
     post: vi.fn(),
     get: vi.fn(),
     delete: vi.fn(),
@@ -50,13 +50,13 @@ describe('ChatbotService API Endpoint Modifications', () => {
         quick_actions: [],
       }
 
-      vi.mocked(api.post).mockResolvedValueOnce({ data: mockBackendResponse })
+      vi.mocked(chatbotApi.post).mockResolvedValueOnce({ data: mockBackendResponse })
 
       const testMessage = 'Hello, I need help'
       await chatbotService.sendMessage({ message: testMessage })
 
       // Verify the API was called with correct endpoint
-      expect(api.post).toHaveBeenCalledWith(
+      expect(chatbotApi.post).toHaveBeenCalledWith(
         '/api/v1/chatbot/message',
         expect.objectContaining({
           user_id: mockUserId,
@@ -73,7 +73,7 @@ describe('ChatbotService API Endpoint Modifications', () => {
         response_type: 'text',
       }
 
-      vi.mocked(api.post).mockResolvedValue({ data: mockBackendResponse })
+      vi.mocked(chatbotApi.post).mockResolvedValue({ data: mockBackendResponse })
 
       // Send multiple messages
       await chatbotService.sendMessage({ message: 'Message 1' })
@@ -81,10 +81,10 @@ describe('ChatbotService API Endpoint Modifications', () => {
       await chatbotService.sendMessage({ message: 'Message 3' })
 
       // Verify all requests include the same session ID
-      const calls = vi.mocked(api.post).mock.calls
+      const calls = vi.mocked(chatbotApi.post).mock.calls
       expect(calls).toHaveLength(3)
       
-      const sessionIds = calls.map(call => call[1].session_id)
+      const sessionIds = calls.map(call => (call[1] as any).session_id)
       expect(sessionIds[0]).toBe(sessionIds[1])
       expect(sessionIds[1]).toBe(sessionIds[2])
     })
@@ -94,7 +94,7 @@ describe('ChatbotService API Endpoint Modifications', () => {
       const networkError = new Error('Network Error')
       ;(networkError as any).code = 'ECONNABORTED'
 
-      vi.mocked(api.post)
+      vi.mocked(chatbotApi.post)
         .mockRejectedValueOnce(networkError)
         .mockRejectedValueOnce(networkError)
         .mockResolvedValueOnce({
@@ -107,13 +107,13 @@ describe('ChatbotService API Endpoint Modifications', () => {
       const response = await chatbotService.sendMessage({ message: 'Test' })
 
       // Should have retried and eventually succeeded
-      expect(api.post).toHaveBeenCalledTimes(3)
+      expect(chatbotApi.post).toHaveBeenCalledTimes(3)
       expect(response.success).toBe(true)
     })
 
     it('should fall back to local response after max retries', async () => {
       const networkError = new Error('Network Error')
-      vi.mocked(api.post).mockRejectedValue(networkError)
+      vi.mocked(chatbotApi.post).mockRejectedValue(networkError)
 
       const response = await chatbotService.sendMessage({ message: 'Test' })
 
@@ -147,7 +147,7 @@ describe('ChatbotService API Endpoint Modifications', () => {
         ],
       }
 
-      vi.mocked(api.post).mockResolvedValueOnce({ data: mockBackendResponse })
+      vi.mocked(chatbotApi.post).mockResolvedValueOnce({ data: mockBackendResponse })
 
       const response = await chatbotService.sendMessage({ message: 'Recommend perfumes' })
 
@@ -168,7 +168,7 @@ describe('ChatbotService API Endpoint Modifications', () => {
         product_cards: [],
       }
 
-      vi.mocked(api.post).mockResolvedValueOnce({ data: mockBackendResponse })
+      vi.mocked(chatbotApi.post).mockResolvedValueOnce({ data: mockBackendResponse })
 
       await chatbotService.getRecommendations({
         fragranceType: ['플로럴', '시트러스'],
@@ -177,7 +177,7 @@ describe('ChatbotService API Endpoint Modifications', () => {
         occasion: '데일리',
       })
 
-      expect(api.post).toHaveBeenCalledWith(
+      expect(chatbotApi.post).toHaveBeenCalledWith(
         '/api/v1/chatbot/message',
         expect.objectContaining({
           user_id: mockUserId,
@@ -193,15 +193,15 @@ describe('ChatbotService API Endpoint Modifications', () => {
         response_type: 'recommendation',
       }
 
-      vi.mocked(api.post).mockResolvedValueOnce({ data: mockBackendResponse })
+      vi.mocked(chatbotApi.post).mockResolvedValueOnce({ data: mockBackendResponse })
 
       await chatbotService.getRecommendations({
         fragranceType: ['플로럴'],
       })
 
-      const call = vi.mocked(api.post).mock.calls[0]
+      const call = vi.mocked(chatbotApi.post).mock.calls[0]
       expect(call[1]).toHaveProperty('session_id')
-      expect(call[1].session_id).toBe(mockSessionId)
+      expect((call[1] as any).session_id).toBe(mockSessionId)
     })
   })
 
@@ -212,7 +212,7 @@ describe('ChatbotService API Endpoint Modifications', () => {
         message: 'Internal Server Error',
       }
 
-      vi.mocked(api.post)
+      vi.mocked(chatbotApi.post)
         .mockRejectedValueOnce(serverError)
         .mockResolvedValueOnce({
           data: {
@@ -223,7 +223,7 @@ describe('ChatbotService API Endpoint Modifications', () => {
 
       const response = await chatbotService.sendMessage({ message: 'Test' })
 
-      expect(api.post).toHaveBeenCalledTimes(2)
+      expect(chatbotApi.post).toHaveBeenCalledTimes(2)
       expect(response.success).toBe(true)
     })
 
@@ -231,7 +231,7 @@ describe('ChatbotService API Endpoint Modifications', () => {
       const timeoutError = new Error('Timeout')
       ;(timeoutError as any).code = 'ECONNABORTED'
 
-      vi.mocked(api.post).mockRejectedValue(timeoutError)
+      vi.mocked(chatbotApi.post).mockRejectedValue(timeoutError)
 
       const response = await chatbotService.sendMessage({ message: 'Test' })
 
@@ -246,7 +246,7 @@ describe('ChatbotService API Endpoint Modifications', () => {
     it('should handle connection refused errors', async () => {
       const connectionError = new Error('Connection refused')
 
-      vi.mocked(api.post).mockRejectedValue(connectionError)
+      vi.mocked(chatbotApi.post).mockRejectedValue(connectionError)
 
       const response = await chatbotService.sendMessage({ message: 'Test' })
 
@@ -272,21 +272,21 @@ describe('ChatbotService API Endpoint Modifications', () => {
         response_type: 'text',
       }
 
-      vi.mocked(api.post).mockResolvedValueOnce({ data: mockBackendResponse })
+      vi.mocked(chatbotApi.post).mockResolvedValueOnce({ data: mockBackendResponse })
 
       await newService.sendMessage({ message: 'Hello' })
 
-      const call = vi.mocked(api.post).mock.calls[0]
+      const call = vi.mocked(chatbotApi.post).mock.calls[0]
       expect(call[1]).toHaveProperty('session_id')
-      expect(call[1].session_id).toMatch(/^session_/)
+      expect((call[1] as any).session_id).toMatch(/^session_/)
     })
 
     it('should call session clear endpoint on resetSession', async () => {
-      vi.mocked(api.post).mockResolvedValueOnce({ data: { success: true } })
+      vi.mocked(chatbotApi.post).mockResolvedValueOnce({ data: { success: true } })
 
       await chatbotService.resetSession()
 
-      expect(api.post).toHaveBeenCalledWith(
+      expect(chatbotApi.post).toHaveBeenCalledWith(
         '/api/v1/chatbot/session/clear',
         null,
         expect.objectContaining({

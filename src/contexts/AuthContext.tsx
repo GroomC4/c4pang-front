@@ -6,7 +6,7 @@ import authService, { LoginRequest, SignupRequest } from '../services/auth'
 interface User {
   id: string
   email: string
-  username: string
+  name: string
   role: string
 }
 
@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser({
             id: userId,
             email: '',
-            username: '',
+            name: '',
             role: 'CUSTOMER'
           })
         }
@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser({
           id: userId,
           email: credentials.email,
-          username: '',
+          name: '',
           role: 'CUSTOMER'
         })
       }

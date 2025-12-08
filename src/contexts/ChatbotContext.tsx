@@ -838,15 +838,16 @@ export const ChatbotProvider = ({ children }: { children: React.ReactNode }) => 
       }
 
       // Map payment method type to backend format
-      const paymentMethodMap: Record<string, string> = {
-        'credit_card': 'credit_card',
-        'bank_transfer': 'bank_transfer',
-        'kakaopay': 'kakaopay',
-        'naverpay': 'naverpay',
-        'tosspay': 'tosspay'
-      }
+      const pm = state.checkoutState.paymentMethod
+      let paymentMethod = 'credit_card'
 
-      const paymentMethod = paymentMethodMap[state.checkoutState.paymentMethod.methodType] || 'credit_card'
+      if (pm.methodType) {
+        paymentMethod = pm.methodType
+      } else if (pm.type) {
+        if (pm.type === 'card') paymentMethod = 'credit_card'
+        else if (pm.type === 'bank') paymentMethod = 'bank_transfer'
+        else if (pm.type === 'simple' && pm.provider) paymentMethod = pm.provider
+      }
 
       // Call backend chatbot order API
       const response = await fetch('/api/v1/chatbot/order/create', {

@@ -29,6 +29,7 @@ export function generateRecommendationActions(products: any[]): QuickActionItem[
       id: 'view_cart',
       label: '장바구니 보기',
       icon: 'cart',
+      actionType: 'view_cart',
       type: 'secondary',
       payload: { action: 'view_cart' }
     })
@@ -49,6 +50,7 @@ export function generateCartActions(cartItems: CartItem[]): QuickActionItem[] {
       id: 'checkout',
       label: '결제하기',
       icon: 'card',
+      actionType: 'checkout',
       type: 'primary',
       payload: { action: 'checkout' }
     })
@@ -58,6 +60,7 @@ export function generateCartActions(cartItems: CartItem[]): QuickActionItem[] {
       id: 'clear_cart',
       label: '장바구니 비우기',
       icon: 'trash',
+      actionType: 'custom',
       type: 'danger',
       payload: { action: 'clear_cart' }
     })
@@ -67,6 +70,7 @@ export function generateCartActions(cartItems: CartItem[]): QuickActionItem[] {
       id: 'continue_shopping',
       label: '쇼핑 계속하기',
       icon: 'arrow',
+      actionType: 'custom',
       type: 'secondary',
       payload: { action: 'continue_shopping' }
     })
@@ -86,6 +90,7 @@ export function generateCartItemActions(productId: string, quantity: number): Qu
     id: `increase_${productId}`,
     label: '+',
     icon: 'plus',
+    actionType: 'custom',
     type: 'secondary',
     payload: { action: 'increase', productId }
   })
@@ -95,6 +100,7 @@ export function generateCartItemActions(productId: string, quantity: number): Qu
     id: `decrease_${productId}`,
     label: '-',
     icon: 'minus',
+    actionType: 'custom',
     type: 'secondary',
     payload: { action: 'decrease', productId }
   })
@@ -104,6 +110,7 @@ export function generateCartItemActions(productId: string, quantity: number): Qu
     id: `remove_${productId}`,
     label: '삭제',
     icon: 'trash',
+    actionType: 'custom',
     type: 'danger',
     payload: { action: 'remove', productId }
   })
@@ -122,6 +129,7 @@ export function generateCheckoutActions(step: 'summary' | 'shipping' | 'payment'
     id: 'cancel_checkout',
     label: '취소',
     icon: 'close',
+    actionType: 'custom',
     type: 'secondary',
     payload: { action: 'cancel_checkout' }
   })
@@ -140,6 +148,7 @@ export function generateOrderActions(orderId: string): QuickActionItem[] {
     id: 'view_order',
     label: '주문 상세보기',
     icon: 'eye',
+    actionType: 'custom',
     type: 'primary',
     payload: { action: 'view_order', orderId }
   })
@@ -149,6 +158,7 @@ export function generateOrderActions(orderId: string): QuickActionItem[] {
     id: 'continue_shopping',
     label: '쇼핑 계속하기',
     icon: 'arrow',
+    actionType: 'custom',
     type: 'secondary',
     payload: { action: 'continue_shopping' }
   })
@@ -168,6 +178,7 @@ export function generateErrorActions(errorType: 'network' | 'validation' | 'busi
       id: 'retry',
       label: '다시 시도',
       icon: 'retry',
+      actionType: 'custom',
       type: 'primary',
       payload: { action: 'retry' }
     })
@@ -178,6 +189,7 @@ export function generateErrorActions(errorType: 'network' | 'validation' | 'busi
     id: 'back',
     label: '이전으로',
     icon: 'arrow',
+    actionType: 'previous_page',
     type: 'secondary',
     payload: { action: 'back' }
   })
@@ -196,6 +208,7 @@ export function generateProductDetailActions(productId: string): QuickActionItem
     id: `add_to_cart_${productId}`,
     label: '장바구니 담기',
     icon: 'cart',
+    actionType: 'add_to_cart',
     type: 'secondary',
     payload: { action: 'add_to_cart', productId }
   })
@@ -205,6 +218,7 @@ export function generateProductDetailActions(productId: string): QuickActionItem
     id: `buy_now_${productId}`,
     label: '바로 구매',
     icon: 'bag',
+    actionType: 'buy_now',
     type: 'primary',
     payload: { action: 'buy_now', productId }
   })

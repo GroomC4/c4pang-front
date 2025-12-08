@@ -18,7 +18,7 @@ import { UserPreferences } from '@/types/recommendation'
 export interface ChatResponse {
   success: boolean
   message: string
-  type: 'text' | 'product' | 'action' | 'recommendation' | 'faq'
+  type: 'text' | 'product' | 'action' | 'recommendation' | 'faq' | 'cart' | 'checkout' | 'confirmation' | 'order' | 'error'
   products?: ProductRecommendation[]
   recommendations?: any[]
   faqs?: any[]
