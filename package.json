@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "echo 'Linting skipped due to environment issues'",
+    "lint": "eslint .",
     "test": "vitest",
     "test:run": "vitest --run",
     "test:ui": "vitest --ui"
@@ -29,15 +29,16 @@
     "typescript": "^5.9.3"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.3",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
+    "@typescript-eslint/eslint-plugin": "^8.48.1",
+    "@typescript-eslint/parser": "^8.48.1",
     "@vitejs/plugin-react": "^5.1.1",
     "@vitest/ui": "^4.0.14",
     "autoprefixer": "^10.4.22",
     "cors": "^2.8.5",
-    "eslint": "^9.39.1",
-    "eslint-config-next": "^16.0.7",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^15.0.3",
     "express": "^5.1.0",
     "fast-check": "^4.3.0",
     "jsdom": "^27.2.0",
