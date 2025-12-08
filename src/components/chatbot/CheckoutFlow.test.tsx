@@ -84,7 +84,7 @@ describe('Checkout Flow Property Tests', () => {
           address: fc.string({ minLength: 5, maxLength: 100 }),
           addressDetail: fc.string({ minLength: 1, maxLength: 100 }),
           postalCode: fc.integer({ min: 10000, max: 99999 }).map(n => n.toString()),
-          deliveryRequest: fc.option(fc.string({ maxLength: 200 }), { nil: undefined })
+          deliveryMessage: fc.option(fc.string({ maxLength: 200 }), { nil: undefined })
         }),
         (shippingInfo: ShippingInfo) => {
           // Validate shipping info format
@@ -92,7 +92,7 @@ describe('Checkout Flow Property Tests', () => {
           const isValidPostalCode = /^[0-9]{5}$/.test(shippingInfo.postalCode)
           const hasRecipientName = shippingInfo.recipientName.trim().length > 0
           const hasAddress = shippingInfo.address.trim().length > 0
-          const hasAddressDetail = shippingInfo.addressDetail.trim().length > 0
+          const hasAddressDetail = (shippingInfo.addressDetail?.trim().length ?? 0) > 0
 
           // Property: if all fields are valid, shipping info is valid
           const isValid = isValidPhone && isValidPostalCode && hasRecipientName && hasAddress && hasAddressDetail
@@ -165,7 +165,7 @@ describe('Checkout Flow Property Tests', () => {
             address: fc.string({ minLength: 1 }),
             addressDetail: fc.string({ minLength: 1 }),
             postalCode: fc.constant('12345'),
-            deliveryRequest: fc.option(fc.string(), { nil: undefined })
+            deliveryMessage: fc.option(fc.string(), { nil: undefined })
           }),
           paymentMethod: fc.record({
             type: fc.constantFrom('card' as const, 'bank' as const, 'simple' as const),
@@ -178,16 +178,16 @@ describe('Checkout Flow Property Tests', () => {
         }),
         (orderInfo: OrderInfo) => {
           // Property: all required fields must be present and non-empty
-          const hasOrderId = orderInfo.orderId && orderInfo.orderId.length > 0
-          const hasOrderDate = orderInfo.orderDate && orderInfo.orderDate.length > 0
-          const hasEstimatedDelivery = orderInfo.estimatedDelivery && orderInfo.estimatedDelivery.length > 0
-          const hasItems = orderInfo.items && orderInfo.items.length > 0
+          const hasOrderId = orderInfo.orderId.length > 0
+          const hasOrderDate = orderInfo.orderDate.length > 0
+          const hasEstimatedDelivery = orderInfo.estimatedDelivery.length > 0
+          const hasItems = orderInfo.items.length > 0
           const hasTotalAmount = orderInfo.totalAmount !== undefined && orderInfo.totalAmount > 0
           const hasShippingInfo = orderInfo.shippingInfo !== undefined && 
                                   orderInfo.shippingInfo.recipientName.length > 0 &&
                                   orderInfo.shippingInfo.phone.length > 0 &&
                                   orderInfo.shippingInfo.address.length > 0 &&
-                                  orderInfo.shippingInfo.addressDetail.length > 0 &&
+                                  (orderInfo.shippingInfo.addressDetail?.length ?? 0) > 0 &&
                                   orderInfo.shippingInfo.postalCode.length > 0
           const hasPaymentMethod = orderInfo.paymentMethod !== undefined &&
                                    orderInfo.paymentMethod.type !== undefined

@@ -21,6 +21,7 @@ export function CartView({ products, quickActions }: CartViewProps) {
     handleQuickAction({
       id: `increase_${productId}`,
       label: '수량 증가',
+      actionType: 'custom',
       type: 'primary',
       payload: { action: 'increase', productId }
     })
@@ -30,6 +31,7 @@ export function CartView({ products, quickActions }: CartViewProps) {
     handleQuickAction({
       id: `decrease_${productId}`,
       label: '수량 감소',
+      actionType: 'custom',
       type: 'secondary',
       payload: { action: 'decrease', productId }
     })
@@ -39,6 +41,7 @@ export function CartView({ products, quickActions }: CartViewProps) {
     handleQuickAction({
       id: `remove_${productId}`,
       label: '삭제',
+      actionType: 'custom',
       type: 'danger',
       payload: { action: 'remove', productId }
     })

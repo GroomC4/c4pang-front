@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { cartApiService } from '@/services/cartApiService'
-import { api } from '@/utils/api'
+import { chatbotApi } from '@/utils/api'
 
 // Mock the api module
 vi.mock('@/utils/api', () => ({
-  api: {
+  chatbotApi: {
     post: vi.fn(),
     get: vi.fn(),
     delete: vi.fn()
@@ -33,7 +33,7 @@ describe('Cart Backend Integration', () => {
         }
       }
 
-      vi.mocked(api.post).mockResolvedValue(mockResponse)
+      vi.mocked(chatbotApi.post).mockResolvedValue(mockResponse)
 
       const result = await cartApiService.addToCart(
         mockUserId,
@@ -42,7 +42,7 @@ describe('Cart Backend Integration', () => {
         1
       )
 
-      expect(api.post).toHaveBeenCalledWith('/api/v1/chatbot/action', {
+      expect(chatbotApi.post).toHaveBeenCalledWith('/api/v1/chatbot/action', {
         user_id: mockUserId,
         session_id: mockSessionId,
         action_type: 'add_to_cart',
@@ -58,7 +58,7 @@ describe('Cart Backend Integration', () => {
 
     it('should handle API errors gracefully', async () => {
       const mockError = new Error('Network error')
-      vi.mocked(api.post).mockRejectedValue(mockError)
+      vi.mocked(chatbotApi.post).mockRejectedValue(mockError)
 
       await expect(
         cartApiService.addToCart(mockUserId, mockSessionId, mockProductId, 1)
@@ -90,11 +90,11 @@ describe('Cart Backend Integration', () => {
         }
       }
 
-      vi.mocked(api.get).mockResolvedValue(mockResponse)
+      vi.mocked(chatbotApi.get).mockResolvedValue(mockResponse)
 
       const result = await cartApiService.getCartSummary(mockUserId, mockSessionId)
 
-      expect(api.get).toHaveBeenCalledWith(
+      expect(chatbotApi.get).toHaveBeenCalledWith(
         `/api/v1/chatbot/cart/${mockUserId}/${mockSessionId}`
       )
 
@@ -117,7 +117,7 @@ describe('Cart Backend Integration', () => {
         }
       }
 
-      vi.mocked(api.post).mockResolvedValue(mockResponse)
+      vi.mocked(chatbotApi.post).mockResolvedValue(mockResponse)
 
       const result = await cartApiService.updateQuantity(
         mockUserId,
@@ -126,7 +126,7 @@ describe('Cart Backend Integration', () => {
         3
       )
 
-      expect(api.post).toHaveBeenCalledWith(
+      expect(chatbotApi.post).toHaveBeenCalledWith(
         '/api/v1/chatbot/cart/update',
         null,
         {
@@ -156,7 +156,7 @@ describe('Cart Backend Integration', () => {
         }
       }
 
-      vi.mocked(api.delete).mockResolvedValue(mockResponse)
+      vi.mocked(chatbotApi.delete).mockResolvedValue(mockResponse)
 
       const result = await cartApiService.removeFromCart(
         mockUserId,
@@ -164,7 +164,7 @@ describe('Cart Backend Integration', () => {
         mockProductId
       )
 
-      expect(api.delete).toHaveBeenCalledWith(
+      expect(chatbotApi.delete).toHaveBeenCalledWith(
         '/api/v1/chatbot/cart/remove',
         {
           params: {
@@ -188,11 +188,11 @@ describe('Cart Backend Integration', () => {
         }
       }
 
-      vi.mocked(api.delete).mockResolvedValue(mockResponse)
+      vi.mocked(chatbotApi.delete).mockResolvedValue(mockResponse)
 
       const result = await cartApiService.clearCart(mockUserId, mockSessionId)
 
-      expect(api.delete).toHaveBeenCalledWith(
+      expect(chatbotApi.delete).toHaveBeenCalledWith(
         '/api/v1/chatbot/cart/clear',
         {
           params: {

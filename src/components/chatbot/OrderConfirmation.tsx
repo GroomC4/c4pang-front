@@ -147,10 +147,10 @@ export function OrderConfirmation({ order, onViewOrder, onContinueShopping }: Or
               </span>
               <span className="text-sm font-medium text-gray-800">{order.shippingInfo.addressDetail}</span>
             </div>
-            {order.shippingInfo.deliveryRequest && (
+            {order.shippingInfo.deliveryMessage && (
               <div className="flex flex-col gap-1 pt-2 border-t border-gray-200">
                 <span className="text-sm text-gray-600">배송 요청사항</span>
-                <span className="text-sm text-gray-800">{order.shippingInfo.deliveryRequest}</span>
+                <span className="text-sm text-gray-800">{order.shippingInfo.deliveryMessage}</span>
               </div>
             )}
           </div>

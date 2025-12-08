@@ -6,7 +6,7 @@ export interface Message {
   content: string
   sender: 'user' | 'bot'
   timestamp: Date
-  type?: 'text' | 'recommendation' | 'cart' | 'checkout' | 'confirmation' | 'error' | 'product' | 'action' | 'order'
+  type?: 'text' | 'recommendation' | 'cart' | 'checkout' | 'confirmation' | 'error' | 'product' | 'action' | 'order' | 'faq'
   data?: {
     products?: ProductRecommendation[]
     recommendations?: any[]
@@ -37,6 +37,9 @@ export interface ProductRecommendation {
   detailUrl?: string
   similarityScore?: number
   quickActions?: QuickActionItem[]
+  fragrance?: string[]
+  season?: string
+  occasion?: string
 }
 
 export interface ShippingInfo {
@@ -49,11 +52,18 @@ export interface ShippingInfo {
 }
 
 export interface PaymentMethod {
-  methodId: string
-  methodType: 'credit_card' | 'bank_transfer' | 'kakaopay' | 'naverpay' | 'tosspay'
-  displayName: string
+  methodId?: string
+  methodType?: 'credit_card' | 'bank_transfer' | 'kakaopay' | 'naverpay' | 'tosspay'
+  displayName?: string
   icon?: string
   isAvailable?: boolean
+  
+  // For checkout form
+  type?: 'card' | 'bank' | 'simple'
+  provider?: string
+  cardNumber?: string
+  expiryDate?: string
+  cvc?: string
 }
 
 export interface CheckoutState {
@@ -96,6 +106,8 @@ export interface QuickActionItem {
   icon?: string
   actionType: 'add_to_cart' | 'buy_now' | 'show_detail' | 'next_page' | 'previous_page' | 'view_cart' | 'checkout' | 'custom'
   payload?: any
+  type?: 'primary' | 'secondary' | 'danger'
+  disabled?: boolean
 }
 
 export interface CheckoutFormData {

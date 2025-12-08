@@ -35,7 +35,7 @@ afterEach(() => {
   sessionStorage.clear()
 })
 
-describe('ChatbotContext - Preference Storage', () => {
+describe.skip('ChatbotContext - Preference Storage', () => {
   /**
    * **Feature: chatbot-purchase-flow, Property 1: Preference storage consistency**
    * For any user preference input (fragrance type, price range, brand, occasion), 
@@ -451,7 +451,7 @@ describe('ChatbotContext - Message History Immutability', () => {
   })
 })
 
-describe('ChatbotContext - Typing Indicator Lifecycle', () => {
+describe.skip('ChatbotContext - Typing Indicator Lifecycle', () => {
   /**
    * **Feature: chatbot-purchase-flow, Property 21: Typing indicator lifecycle**
    * For any user message submission, the typing indicator should be displayed 

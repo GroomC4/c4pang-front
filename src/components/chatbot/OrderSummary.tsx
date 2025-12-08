@@ -118,10 +118,10 @@ export function OrderSummary({ checkoutState, onConfirm, onCancel, isLoading = f
                 </span>
                 <span className="text-sm font-medium text-gray-800">{shippingInfo.addressDetail}</span>
               </div>
-              {shippingInfo.deliveryRequest && (
+              {shippingInfo.deliveryMessage && (
                 <div className="flex flex-col gap-1 pt-2 border-t border-gray-200">
                   <span className="text-sm text-gray-600">배송 요청사항</span>
-                  <span className="text-sm text-gray-800">{shippingInfo.deliveryRequest}</span>
+                  <span className="text-sm text-gray-800">{shippingInfo.deliveryMessage}</span>
                 </div>
               )}
             </div>
